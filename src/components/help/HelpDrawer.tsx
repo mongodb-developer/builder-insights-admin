@@ -343,6 +343,65 @@ function TopicDetail({
         </Box>
       )}
 
+      {/* Screenshots */}
+      {topic.screenshots && topic.screenshots.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
+            📸 App Screenshots
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 1.5,
+            }}
+          >
+            {topic.screenshots.map((screenshot, idx) => (
+              <Box
+                key={idx}
+                sx={{
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  border: `1px solid ${mongoColors.gray[200]}`,
+                  bgcolor: mongoColors.gray[100],
+                }}
+              >
+                <Box
+                  component="img"
+                  src={screenshot.src}
+                  alt={screenshot.alt}
+                  sx={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'scale(1.02)',
+                    },
+                  }}
+                  onClick={() => window.open(screenshot.src, '_blank')}
+                />
+                {screenshot.caption && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      display: 'block',
+                      p: 1,
+                      textAlign: 'center',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    {screenshot.caption}
+                  </Typography>
+                )}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+
       {/* Related topics */}
       {topic.relatedTopics && topic.relatedTopics.length > 0 && (
         <Box sx={{ mt: 3 }}>

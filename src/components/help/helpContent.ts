@@ -9,6 +9,7 @@ export interface HelpTopic {
   content: string;
   tips?: string[];
   relatedTopics?: string[];
+  screenshots?: { src: string; alt: string; caption?: string }[];
 }
 
 export interface PageHelpContent {
@@ -188,6 +189,12 @@ App Store release.
       'Review pending drafts before they sync',
     ],
     relatedTopics: ['insights', 'events', 'voice-recording'],
+    screenshots: [
+      { src: '/help/screenshots/01-home-capture-starting.png', alt: 'Home Screen', caption: 'Quick access to voice and form capture' },
+      { src: '/help/screenshots/02-home-main.png', alt: 'Home Dashboard', caption: 'Your insights at a glance' },
+      { src: '/help/screenshots/03-voice-recording.png', alt: 'Voice Recording', caption: 'Tap to record — AI handles transcription' },
+      { src: '/help/screenshots/04-capture-form.png', alt: 'Capture Form', caption: 'Add sentiment, priority, and details' },
+    ],
   },
 
   'voice-recording': {
