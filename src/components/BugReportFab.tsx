@@ -90,13 +90,17 @@ export default function BugReportFab() {
       {/* Floating Action Button */}
       <Tooltip title="Report a Bug" placement="left" TransitionComponent={Zoom}>
         <Fab
-          color="error"
           onClick={handleOpen}
           sx={{
             position: 'fixed',
             bottom: 24,
             right: 24,
             zIndex: 1000,
+            bgcolor: 'grey.700',
+            color: 'white',
+            '&:hover': {
+              bgcolor: 'grey.600',
+            },
           }}
         >
           <BugReportIcon />

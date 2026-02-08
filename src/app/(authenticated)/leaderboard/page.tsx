@@ -31,6 +31,8 @@ import {
   BugReport,
   Star,
 } from '@mui/icons-material';
+import PageHelp from '@/components/help/PageHelp';
+import { useHelp } from '@/components/help';
 
 interface Stats {
   byType: Record<string, number>;
@@ -191,8 +193,12 @@ export default function LeaderboardPage() {
   const totalInsights = Object.values(stats.byType).reduce((a, b) => a + b, 0);
   const maxProductArea = Math.max(...Object.values(stats.byProductArea), 1);
 
+  const { openHelp } = useHelp();
+
   return (
     <Box>
+      <PageHelp page="leaderboard" onOpenDrawer={openHelp} />
+      
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>Leaderboard</Typography>
         <Typography color="text.secondary">

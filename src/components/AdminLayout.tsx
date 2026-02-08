@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   AppBar,
@@ -37,6 +37,7 @@ import {
   Public as PublicIcon,
   AdminPanelSettings as AdminIcon,
   Help as HelpIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 import BugReportFab from './BugReportFab';
@@ -46,6 +47,8 @@ const DRAWER_WIDTH = 260;
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: <DashboardIcon />, highlight: true },
+  { label: 'Search', href: '/search', icon: <SearchIcon /> },
+  { divider: true },
   { label: 'Events', href: '/events', icon: <EventIcon /> },
   { label: 'Insights', href: '/insights', icon: <InsightIcon /> },
   { label: 'Advocates', href: '/advocates', icon: <PeopleIcon /> },
@@ -55,8 +58,8 @@ const navItems = [
   { label: 'Bug Reports', href: '/bugs', icon: <BugReportIcon /> },
   { label: 'PMO Import', href: '/import', icon: <ImportIcon /> },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
-  { divider: true },
-  { label: 'User Management', href: '/admin/users', icon: <AdminIcon /> },
+  { divider: true, adminOnly: true },
+  { label: 'User Management', href: '/admin/users', icon: <AdminIcon />, adminOnly: true },
 ];
 
 interface Props {
@@ -68,7 +71,23 @@ function AdminLayoutInner({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = loading
   const { openHelp } = useHelp();
+
+  // Check if user is admin
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : Promise.reject('Not authenticated'))
+      .then(data => setIsAdmin(data.isAdmin === true || data.role === 'admin'))
+      .catch(() => setIsAdmin(false));
+  }, []);
+
+  // Filter nav items based on admin status (show all while loading)
+  const visibleNavItems = navItems.filter(item => {
+    if (!('adminOnly' in item) || !item.adminOnly) return true;
+    if (isAdmin === null) return true; // Show while loading
+    return isAdmin;
+  });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -129,7 +148,7 @@ function AdminLayoutInner({ children }: Props) {
 
       {/* Navigation */}
       <List sx={{ flex: 1, px: 1, py: 2 }}>
-        {navItems.map((item, index) =>
+        {visibleNavItems.map((item, index) =>
           'divider' in item ? (
             <Divider key={index} sx={{ my: 1 }} />
           ) : (

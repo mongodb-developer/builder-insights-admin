@@ -13,8 +13,11 @@ import {
   Skeleton,
   TextField,
   InputAdornment,
+  Button,
 } from '@mui/material';
-import { Person, Search, Email } from '@mui/icons-material';
+import { Person, Search, Email, Add } from '@mui/icons-material';
+import PageHelp from '@/components/help/PageHelp';
+import { useHelp } from '@/components/help';
 
 interface Advocate {
   _id: string;
@@ -96,8 +99,12 @@ export default function AdvocatesPage() {
     );
   }
 
+  const { openHelp } = useHelp();
+
   return (
     <Box>
+      <PageHelp page="advocates" onOpenDrawer={openHelp} />
+      
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>Advocates</Typography>
@@ -105,20 +112,30 @@ export default function AdvocatesPage() {
             {advocates.length} team members
           </Typography>
         </Box>
-        <TextField
-          size="small"
-          placeholder="Search advocates..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 250 }}
-        />
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            size="small"
+            placeholder="Search advocates..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ minWidth: 250 }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            href="/admin/users"
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Add Advocate
+          </Button>
+        </Box>
       </Box>
 
       {/* Managers Section */}

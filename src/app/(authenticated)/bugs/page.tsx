@@ -53,6 +53,8 @@ import {
   CalendarToday,
   DragIndicator,
 } from '@mui/icons-material';
+import PageHelp from '@/components/help/PageHelp';
+import { useHelp } from '@/components/help';
 
 type BugStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'wont_fix';
 type BugPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -232,8 +234,12 @@ export default function BugsPage() {
     );
   }
 
+  const { openHelp } = useHelp();
+
   return (
     <Box>
+      <PageHelp page="bugs" onOpenDrawer={openHelp} />
+      
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>

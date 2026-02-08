@@ -43,6 +43,8 @@ import {
   Marker,
   ZoomableGroup,
 } from 'react-simple-maps';
+import PageHelp from '@/components/help/PageHelp';
+import { useHelp } from '@/components/help';
 
 // World map TopoJSON
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -257,8 +259,12 @@ export default function WorldPage() {
     );
   }
 
+  const { openHelp } = useHelp();
+
   return (
     <Box sx={{ p: 3 }}>
+      <PageHelp page="world" onOpenDrawer={openHelp} />
+      
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>

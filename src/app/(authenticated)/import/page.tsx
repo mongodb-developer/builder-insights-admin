@@ -39,6 +39,8 @@ import {
   type MappingResult,
   KNOWN_DAS,
 } from '@/lib/schema-mapper';
+import PageHelp from '@/components/help/PageHelp';
+import { useHelp } from '@/components/help';
 
 // ============================================================================
 // CSV PARSER
@@ -408,8 +410,12 @@ export default function ImportPage() {
     return colors[status] || 'default';
   };
 
+  const { openHelp } = useHelp();
+
   return (
     <Box>
+      <PageHelp page="import" onOpenDrawer={openHelp} />
+      
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           PMO Import
