@@ -83,21 +83,21 @@ export default function AdminLayout({ children }: Props) {
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Logo */}
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Avatar
+      <Box sx={{ p: 2 }}>
+        <Box
+          component="img"
+          src="/banner-light.png"
+          alt="DevRel Insights"
           sx={{
-            bgcolor: mongoColors.green,
-            color: mongoColors.black,
-            width: 40,
-            height: 40,
-            fontWeight: 700,
+            width: '100%',
+            height: 'auto',
+            borderRadius: 1,
+            mb: 1,
           }}
-        >
-          DI
-        </Avatar>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-            DevRel Insights
+        />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            Admin Portal
           </Typography>
           <Chip label="Admin" size="small" sx={{ height: 20, fontSize: 11 }} />
         </Box>
