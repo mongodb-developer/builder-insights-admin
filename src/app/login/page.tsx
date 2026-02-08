@@ -11,8 +11,9 @@ import {
   Button,
   Alert,
   Avatar,
+  Divider,
 } from '@mui/material';
-import { Lightbulb, Email } from '@mui/icons-material';
+import { Lightbulb, Email, Pin } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 
 export default function LoginPage() {
@@ -27,9 +28,11 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(false);
 
   useEffect(() => {
     const err = searchParams.get('error');
@@ -56,7 +59,37 @@ function LoginForm() {
         return;
       }
 
-      setSuccess('Check your email — we sent you a sign-in link.');
+      setSuccess('Check your email — we sent you a verification code.');
+      setShowCodeInput(true);
+    } catch (err) {
+      setError('Connection error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: code.replace(/\s/g, '') }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Invalid code');
+        return;
+      }
+
+      // Cookie is set by the API, redirect to dashboard
+      router.push('/dashboard');
+      router.refresh();
     } catch (err) {
       setError('Connection error. Please try again.');
     } finally {
@@ -118,40 +151,97 @@ function LoginForm() {
             </Alert>
           )}
 
-          {/* Magic Link Form */}
-          <Box component="form" onSubmit={handleMagicLink}>
-            <TextField
-              label="Email address"
-              type="email"
-              fullWidth
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              sx={{ mb: 2.5 }}
-              autoComplete="email"
-              autoFocus
-              placeholder="you@mongodb.com"
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={loading || !email.trim()}
-              startIcon={<Email />}
-              sx={{ 
-                py: 1.25, 
-                fontWeight: 600,
-                bgcolor: mongoColors.green,
-                color: mongoColors.black,
-                '&:hover': {
-                  bgcolor: mongoColors.darkGreen,
-                  color: mongoColors.white,
-                },
-              }}
-            >
-              {loading ? 'Sending...' : 'Send Sign-In Link'}
-            </Button>
-          </Box>
+          {!showCodeInput ? (
+            /* Email Form */
+            <Box component="form" onSubmit={handleMagicLink}>
+              <TextField
+                label="Email address"
+                type="email"
+                fullWidth
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                sx={{ mb: 2.5 }}
+                autoComplete="email"
+                autoFocus
+                placeholder="you@mongodb.com"
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                disabled={loading || !email.trim()}
+                startIcon={<Email />}
+                sx={{ 
+                  py: 1.25, 
+                  fontWeight: 600,
+                  bgcolor: mongoColors.green,
+                  color: mongoColors.black,
+                  '&:hover': {
+                    bgcolor: mongoColors.darkGreen,
+                    color: mongoColors.white,
+                  },
+                }}
+              >
+                {loading ? 'Sending...' : 'Send Verification Code'}
+              </Button>
+            </Box>
+          ) : (
+            /* Code Verification Form */
+            <Box component="form" onSubmit={handleVerifyCode}>
+              <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                Enter the 6-digit code sent to <strong>{email}</strong>
+              </Typography>
+              <TextField
+                label="Verification Code"
+                fullWidth
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^\d\s]/g, '').slice(0, 7))}
+                sx={{ mb: 2.5 }}
+                autoFocus
+                placeholder="123 456"
+                inputProps={{
+                  style: { letterSpacing: '0.3em', fontSize: '1.25rem', textAlign: 'center' },
+                  maxLength: 7,
+                }}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                disabled={loading || code.replace(/\s/g, '').length !== 6}
+                startIcon={<Pin />}
+                sx={{ 
+                  py: 1.25, 
+                  fontWeight: 600,
+                  bgcolor: mongoColors.green,
+                  color: mongoColors.black,
+                  '&:hover': {
+                    bgcolor: mongoColors.darkGreen,
+                    color: mongoColors.white,
+                  },
+                }}
+              >
+                {loading ? 'Verifying...' : 'Sign In'}
+              </Button>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Button
+                variant="text"
+                fullWidth
+                onClick={() => {
+                  setShowCodeInput(false);
+                  setCode('');
+                  setSuccess('');
+                }}
+                sx={{ color: 'text.secondary' }}
+              >
+                Use a different email
+              </Button>
+            </Box>
+          )}
 
           <Typography
             variant="caption"
@@ -162,7 +252,10 @@ function LoginForm() {
               color: 'text.secondary',
             }}
           >
-            We&apos;ll email you a magic link for password-free sign in.
+            {showCodeInput 
+              ? 'Check your inbox and spam folder for the code.'
+              : "We'll email you a verification code for password-free sign in."
+            }
           </Typography>
         </CardContent>
       </Card>

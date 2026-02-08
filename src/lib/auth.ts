@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { getDb } from './mongodb';
+import { Role, ROLES, isAdmin as checkIsAdmin, getPermissions, RolePermissions } from './roles';
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'devrel-insights-secret-change-me'
@@ -16,7 +17,7 @@ const EXPIRY = '7d';
 export interface TokenPayload {
   email: string;
   name: string;
-  role: string;
+  role: Role;
   isAdmin: boolean;
   advocateId?: string | null;
 }
@@ -123,4 +124,78 @@ export async function getSessionUser(): Promise<TokenPayload | null> {
   return getSession();
 }
 
-export { SECRET };
+/**
+ * Get session user with permissions object
+ */
+export async function getSessionWithPermissions(): Promise<{
+  user: TokenPayload;
+  permissions: RolePermissions;
+} | null> {
+  const user = await getSession();
+  if (!user) return null;
+  return {
+    user,
+    permissions: getPermissions(user.role),
+  };
+}
+
+/**
+ * Require admin role - throws if not admin
+ */
+export async function requireAdmin(): Promise<TokenPayload> {
+  const user = await getSession();
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+  if (!checkIsAdmin(user.role)) {
+    throw new Error('Admin access required');
+  }
+  return user;
+}
+
+/**
+ * Ensure admin exists - seed on first run
+ */
+export async function ensureAdminExists(): Promise<boolean> {
+  const db = await getDb();
+  
+  // Check if Michael.lynn@mongodb.com exists as advocate
+  const adminEmail = 'michael.lynn@mongodb.com';
+  const advocate = await db.collection('advocates').findOne({ 
+    email: { $regex: new RegExp(`^${adminEmail}$`, 'i') }
+  });
+  
+  if (advocate && advocate.role !== ROLES.ADMIN) {
+    // Update to admin
+    await db.collection('advocates').updateOne(
+      { _id: advocate._id },
+      { 
+        $set: { 
+          role: ROLES.ADMIN,
+          isAdmin: true,
+          updatedAt: new Date().toISOString(),
+        }
+      }
+    );
+    console.log(`[Auth] Updated ${adminEmail} to admin role`);
+    return true;
+  } else if (!advocate) {
+    // Create admin advocate
+    await db.collection('advocates').insertOne({
+      email: adminEmail,
+      name: 'Michael Lynn',
+      role: ROLES.ADMIN,
+      isAdmin: true,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    console.log(`[Auth] Created admin advocate: ${adminEmail}`);
+    return true;
+  }
+  
+  return false;
+}
+
+export { SECRET, ROLES, getPermissions };
+export type { Role, RolePermissions };

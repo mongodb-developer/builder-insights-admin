@@ -73,7 +73,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // For web, set cookie and redirect to dashboard
-    const url = new URL('/', request.url);
+    const url = new URL('/dashboard', request.url);
     const response = NextResponse.redirect(url);
     response.cookies.set(COOKIE_NAME, jwt, {
       httpOnly: true,

@@ -34,6 +34,7 @@ import {
   OpenInNew as OpenInNewIcon,
   BugReport as BugReportIcon,
   Public as PublicIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 import BugReportFab from './BugReportFab';
@@ -53,6 +54,8 @@ const navItems = [
   { label: 'Bug Reports', href: '/bugs', icon: <BugReportIcon /> },
   { label: 'PMO Import', href: '/import', icon: <ImportIcon /> },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
+  { divider: true },
+  { label: 'User Management', href: '/admin/users', icon: <AdminIcon /> },
 ];
 
 interface Props {

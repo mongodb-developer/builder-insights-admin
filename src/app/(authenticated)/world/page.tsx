@@ -6,7 +6,7 @@
  * Shows where DevRel Insights users are around the world.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   Box,
   Card,
@@ -23,8 +23,9 @@ import {
   ToggleButtonGroup,
   CircularProgress,
   Alert,
-  Paper,
   Divider,
+  Tooltip,
+  Paper,
 } from '@mui/material';
 import {
   Public as GlobeIcon,
@@ -32,10 +33,19 @@ import {
   AccessTime as TimeIcon,
   TrendingUp as TrendingIcon,
   LocationOn as LocationIcon,
-  PhoneIphone as PhoneIcon,
   Android as AndroidIcon,
   Apple as AppleIcon,
 } from '@mui/icons-material';
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker,
+  ZoomableGroup,
+} from 'react-simple-maps';
+
+// World map TopoJSON
+const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
 interface UserLocation {
   userId: string;
@@ -91,11 +101,127 @@ const formatTimeAgo = (dateStr: string) => {
   return `${diffDays}d ago`;
 };
 
+// Memoized map component for performance
+const WorldMapChart = memo(function WorldMapChart({ 
+  users, 
+  onSelectUser 
+}: { 
+  users: UserLocation[]; 
+  onSelectUser: (user: UserLocation | null) => void;
+}) {
+  const [hoveredUser, setHoveredUser] = useState<UserLocation | null>(null);
+
+  return (
+    <ComposableMap
+      projection="geoMercator"
+      projectionConfig={{
+        scale: 130,
+        center: [0, 30],
+      }}
+      style={{ width: '100%', height: '100%' }}
+    >
+      <ZoomableGroup>
+        <Geographies geography={GEO_URL}>
+          {({ geographies }) =>
+            geographies.map((geo) => (
+              <Geography
+                key={geo.rsmKey}
+                geography={geo}
+                fill="#E8E8E8"
+                stroke="#BDBDBD"
+                strokeWidth={0.5}
+                style={{
+                  default: { outline: 'none' },
+                  hover: { fill: '#D5D5D5', outline: 'none' },
+                  pressed: { outline: 'none' },
+                }}
+              />
+            ))
+          }
+        </Geographies>
+
+        {/* User markers */}
+        {users.map((user) => {
+          if (!user.lastLocation?.lat || !user.lastLocation?.lon) return null;
+          
+          const isHovered = hoveredUser?.userId === user.userId;
+          
+          return (
+            <Marker
+              key={user.userId}
+              coordinates={[user.lastLocation.lon, user.lastLocation.lat]}
+              onMouseEnter={() => setHoveredUser(user)}
+              onMouseLeave={() => setHoveredUser(null)}
+              onClick={() => onSelectUser(user)}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* Pulse animation for recent users */}
+              <circle
+                r={isHovered ? 12 : 8}
+                fill={user.platform === 'ios' ? '#007AFF' : '#3DDC84'}
+                fillOpacity={0.3}
+                stroke={user.platform === 'ios' ? '#007AFF' : '#3DDC84'}
+                strokeWidth={2}
+              />
+              <circle
+                r={isHovered ? 6 : 4}
+                fill={user.platform === 'ios' ? '#007AFF' : '#3DDC84'}
+              />
+              
+              {/* Tooltip on hover */}
+              {isHovered && (
+                <g>
+                  <rect
+                    x={10}
+                    y={-25}
+                    width={Math.max(100, (user.userName?.length || 10) * 7 + 20)}
+                    height={50}
+                    fill="white"
+                    stroke="#ccc"
+                    strokeWidth={1}
+                    rx={4}
+                  />
+                  <text
+                    x={15}
+                    y={-10}
+                    fontSize={11}
+                    fontWeight="bold"
+                    fill="#333"
+                  >
+                    {user.userName || 'Anonymous'}
+                  </text>
+                  <text
+                    x={15}
+                    y={5}
+                    fontSize={10}
+                    fill="#666"
+                  >
+                    {user.lastLocation.city}, {user.lastLocation.country}
+                  </text>
+                  <text
+                    x={15}
+                    y={18}
+                    fontSize={9}
+                    fill="#999"
+                  >
+                    {formatTimeAgo(user.lastSeen)}
+                  </text>
+                </g>
+              )}
+            </Marker>
+          );
+        })}
+      </ZoomableGroup>
+    </ComposableMap>
+  );
+});
+
 export default function WorldPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('24');
+  const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -223,6 +349,74 @@ export default function WorldPage() {
         </Grid>
       </Grid>
 
+      {/* Interactive World Map */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              🗺️ Live User Map
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#007AFF' }} />
+                <Typography variant="caption">iOS</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#3DDC84' }} />
+                <Typography variant="caption">Android</Typography>
+              </Box>
+            </Box>
+          </Box>
+          
+          <Paper 
+            variant="outlined" 
+            sx={{ 
+              height: 400, 
+              bgcolor: '#F5F9FF',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            {data?.activeUsers && data.activeUsers.length > 0 ? (
+              <WorldMapChart 
+                users={data.activeUsers} 
+                onSelectUser={setSelectedUser}
+              />
+            ) : (
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '100%',
+                color: 'text.secondary',
+              }}>
+                <GlobeIcon sx={{ fontSize: 64, opacity: 0.3, mb: 2 }} />
+                <Typography>No active users in this time range</Typography>
+                <Typography variant="body2">Users will appear here when they open the app</Typography>
+              </Box>
+            )}
+          </Paper>
+          
+          {/* Selected user detail */}
+          {selectedUser && (
+            <Alert 
+              severity="info" 
+              sx={{ mt: 2 }}
+              onClose={() => setSelectedUser(null)}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {selectedUser.platform === 'ios' ? <AppleIcon /> : <AndroidIcon />}
+                <strong>{selectedUser.userName}</strong> — {selectedUser.lastLocation?.city}, {selectedUser.lastLocation?.country}
+                <Typography variant="caption" sx={{ ml: 'auto' }}>
+                  Last seen: {formatTimeAgo(selectedUser.lastSeen)} • {selectedUser.pingCount} pings
+                </Typography>
+              </Box>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
       <Grid container spacing={3}>
         {/* Countries List */}
         <Grid size={{ xs: 12, md: 6 }}>
@@ -282,7 +476,10 @@ export default function WorldPage() {
                     .slice(0, 10)
                     .map((user, index) => (
                       <React.Fragment key={user.userId}>
-                        <ListItem sx={{ px: 0 }}>
+                        <ListItem 
+                          sx={{ px: 0, cursor: 'pointer' }}
+                          onClick={() => setSelectedUser(user)}
+                        >
                           <ListItemAvatar>
                             <Avatar sx={{ bgcolor: 'primary.main' }}>
                               {user.userName?.[0]?.toUpperCase() || '?'}
@@ -321,17 +518,6 @@ export default function WorldPage() {
           </Card>
         </Grid>
       </Grid>
-
-      {/* Map placeholder - can add react-simple-maps later */}
-      <Paper sx={{ mt: 3, p: 4, textAlign: 'center', bgcolor: 'action.hover' }}>
-        <GlobeIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-        <Typography variant="h6" color="text.secondary">
-          Interactive World Map
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Coming soon — user locations will be displayed on a map
-        </Typography>
-      </Paper>
     </Box>
   );
 }

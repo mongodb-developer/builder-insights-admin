@@ -47,14 +47,18 @@ export async function POST(request: NextRequest) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
+    // Determine role - use advocate's actual role, not just 'advocate'
+    const userRole = advocate?.role || user?.role || 'viewer';
+    const isAdmin = userRole === 'admin' || advocate?.isAdmin === true || user?.isAdmin === true;
+
     // Store code for verification
     await db.collection('auth_codes').insertOne({
       code,
       email: normalizedEmail,
       advocateId: advocate?._id || null,
       userName: advocate?.name || user?.name || normalizedEmail.split('@')[0],
-      userRole: advocate ? 'advocate' : (user?.role || 'user'),
-      isAdmin: advocate?.isAdmin === true || user?.isAdmin === true,
+      userRole,
+      isAdmin,
       expiresAt,
       usedAt: null,
       createdAt: new Date(),
@@ -73,8 +77,8 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       advocateId: advocate?._id || null,
       userName: advocate?.name || user?.name || normalizedEmail.split('@')[0],
-      userRole: advocate ? 'advocate' : (user?.role || 'user'),
-      isAdmin: advocate?.isAdmin === true || user?.isAdmin === true,
+      userRole,
+      isAdmin,
       expiresAt,
       usedAt: null,
       createdAt: new Date(),

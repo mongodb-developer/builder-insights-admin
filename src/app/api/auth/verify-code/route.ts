@@ -31,22 +31,30 @@ export async function POST(request: NextRequest) {
 
     // DEV BYPASS: Code 123456 works for any @mongodb.com email
     if (normalizedCode === '123456' && normalizedEmail.endsWith('@mongodb.com')) {
+      // Try to find existing advocate to get their actual role
+      let advocate: any = await db.collection('advocates').findOne({ 
+        email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+      
+      const userName = advocate?.name || normalizedEmail.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      const userRole = advocate?.role || 'advocate';
+      const isAdmin = userRole === 'admin' || advocate?.isAdmin === true;
+      const advocateId = advocate?._id?.toString() || `dev_${normalizedEmail.replace(/[@.]/g, '_')}`;
+
       const jwt = await createToken({
         email: normalizedEmail,
-        name: normalizedEmail.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-        role: 'advocate',
-        isAdmin: normalizedEmail === 'michael.lynn@mongodb.com',
-        advocateId: `dev_${normalizedEmail.replace(/[@.]/g, '_')}`,
+        name: userName,
+        role: userRole,
+        isAdmin,
+        advocateId,
       });
 
-      // Try to find existing advocate or create placeholder
-      let advocate: any = await db.collection('advocates').findOne({ email: normalizedEmail });
       if (!advocate) {
         advocate = {
-          _id: `dev_${normalizedEmail.replace(/[@.]/g, '_')}`,
+          _id: advocateId,
           email: normalizedEmail,
-          name: normalizedEmail.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-          role: 'advocate',
+          name: userName,
+          role: userRole,
         };
       }
 
