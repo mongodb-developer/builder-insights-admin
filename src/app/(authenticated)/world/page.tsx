@@ -153,7 +153,6 @@ const WorldMapChart = memo(function WorldMapChart({
               onMouseEnter={() => setHoveredUser(user)}
               onMouseLeave={() => setHoveredUser(null)}
               onClick={() => onSelectUser(user)}
-              style={{ cursor: 'pointer' }}
             >
               {/* Pulse animation for recent users */}
               <circle
