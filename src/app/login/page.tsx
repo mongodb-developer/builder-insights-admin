@@ -110,20 +110,21 @@ function LoginForm() {
     >
       <Card sx={{ maxWidth: 420, width: '100%' }}>
         <CardContent sx={{ p: 4 }}>
+          {/* Banner */}
+          <Box
+            component="img"
+            src="/banner-light.png"
+            alt="DevRel Insights"
+            sx={{
+              width: '100%',
+              height: 'auto',
+              borderRadius: 2,
+              mb: 2,
+            }}
+          />
+
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Avatar
-              sx={{
-                width: 56,
-                height: 56,
-                bgcolor: `${mongoColors.green}20`,
-                color: mongoColors.green,
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <Lightbulb sx={{ fontSize: 32 }} />
-            </Avatar>
             <Typography
               variant="h5"
               sx={{

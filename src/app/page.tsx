@@ -229,20 +229,19 @@ export default function LandingPage() {
               position: 'relative',
             }}
           >
-            <Paper
-              elevation={0}
+            <Box
+              component="img"
+              src="/banner-dark.png"
+              alt="DevRel Insights - Capture What Developers Say"
               sx={{
-                display: 'inline-block',
-                p: 2,
-                borderRadius: 4,
-                bgcolor: 'rgba(0, 237, 100, 0.1)',
-                border: '1px solid rgba(0, 237, 100, 0.3)',
+                width: '100%',
+                maxWidth: 700,
+                height: 'auto',
+                borderRadius: 3,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(255,255,255,0.1)',
               }}
-            >
-              <Typography variant="body2" color="text.secondary">
-                📱 App screenshots coming soon
-              </Typography>
-            </Paper>
+            />
           </Box>
 
           {/* Features Grid */}
