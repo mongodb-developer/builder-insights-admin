@@ -20,7 +20,8 @@ import {
   Chip,
   Stack,
 } from '@mui/material';
-import { Delete, Save, Refresh } from '@mui/icons-material';
+import { Delete, Save, Refresh, Help, RestartAlt, School } from '@mui/icons-material';
+import { resetOnboardingTour, resetDismissedHelp, useHelp } from '@/components/help';
 import { SCHEMA } from '@/lib/schema-mapper';
 
 interface SchemaMapping {
@@ -29,9 +30,11 @@ interface SchemaMapping {
 }
 
 export default function SettingsPage() {
+  const { startTour } = useHelp();
   const [aliases, setAliases] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [helpReset, setHelpReset] = useState(false);
 
   useEffect(() => {
     fetch('/api/schema')
@@ -201,6 +204,53 @@ export default function SettingsPage() {
             <Button variant="outlined">Export Insights (CSV)</Button>
             <Button variant="outlined">Export All (JSON)</Button>
           </Stack>
+        </CardContent>
+      </Card>
+
+      {/* Help & Onboarding */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Help color="primary" />
+            <Typography variant="h6">Help & Onboarding</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Access help resources and restart the onboarding experience.
+          </Typography>
+          
+          {helpReset && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Help preferences reset! Page-level tips will appear again.
+            </Alert>
+          )}
+
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+            <Button
+              variant="outlined"
+              startIcon={<School />}
+              onClick={() => {
+                resetOnboardingTour();
+                startTour();
+              }}
+            >
+              Restart Tour
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<RestartAlt />}
+              onClick={() => {
+                resetDismissedHelp();
+                setHelpReset(true);
+                setTimeout(() => setHelpReset(false), 3000);
+              }}
+            >
+              Reset Help Tips
+            </Button>
+          </Stack>
+          
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+            💡 Tip: Press <strong>?</strong> anywhere to open the help drawer
+          </Typography>
         </CardContent>
       </Card>
     </Box>

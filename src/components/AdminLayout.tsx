@@ -18,6 +18,7 @@ import {
   Avatar,
   Chip,
   Button,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -35,9 +36,11 @@ import {
   BugReport as BugReportIcon,
   Public as PublicIcon,
   AdminPanelSettings as AdminIcon,
+  Help as HelpIcon,
 } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 import BugReportFab from './BugReportFab';
+import { HelpProvider, useHelp } from './help';
 
 const DRAWER_WIDTH = 260;
 
@@ -60,10 +63,12 @@ interface Props {
   children: React.ReactNode;
 }
 
-export default function AdminLayout({ children }: Props) {
+// Inner layout component that can use useHelp
+function AdminLayoutInner({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { openHelp } = useHelp();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -99,7 +104,24 @@ export default function AdminLayout({ children }: Props) {
           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
             Admin Portal
           </Typography>
-          <Chip label="Admin" size="small" sx={{ height: 20, fontSize: 11 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Tooltip title="Help (?)">
+              <IconButton
+                size="small"
+                onClick={() => openHelp()}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    color: mongoColors.darkGreen,
+                    bgcolor: `${mongoColors.green}10`,
+                  },
+                }}
+              >
+                <HelpIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Chip label="Admin" size="small" sx={{ height: 20, fontSize: 11 }} />
+          </Box>
         </Box>
       </Box>
 
@@ -285,5 +307,14 @@ export default function AdminLayout({ children }: Props) {
       {/* Bug Report FAB */}
       <BugReportFab />
     </Box>
+  );
+}
+
+// Wrap with HelpProvider so help context is available
+export default function AdminLayout({ children }: Props) {
+  return (
+    <HelpProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </HelpProvider>
   );
 }

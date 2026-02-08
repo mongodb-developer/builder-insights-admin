@@ -42,6 +42,7 @@ import {
   Lightbulb,
   Business,
 } from '@mui/icons-material';
+import { PageHelp, HelpButton, useHelp } from '@/components/help';
 
 interface Event {
   _id: string;
@@ -78,6 +79,7 @@ const regionColors: Record<string, string> = {
 };
 
 export default function EventsPage() {
+  const { openHelp } = useHelp();
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,6 +206,9 @@ export default function EventsPage() {
 
   return (
     <Box>
+      {/* Page Help */}
+      <PageHelp page="events" onOpenDrawer={() => openHelp('events')} />
+
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>

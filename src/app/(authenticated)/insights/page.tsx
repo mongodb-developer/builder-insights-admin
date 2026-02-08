@@ -49,6 +49,7 @@ import {
   CalendarToday,
 } from '@mui/icons-material';
 import InsightFormDialog, { InsightFormData } from '@/components/InsightFormDialog';
+import { PageHelp, HelpButton, useHelp } from '@/components/help';
 
 interface ReactionCounts {
   like?: number;
@@ -129,6 +130,7 @@ function ReactionDisplay({ counts, total }: { counts?: ReactionCounts; total?: n
 }
 
 export default function InsightsPage() {
+  const { openHelp } = useHelp();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -317,6 +319,9 @@ export default function InsightsPage() {
 
   return (
     <Box>
+      {/* Page Help */}
+      <PageHelp page="insights" onOpenDrawer={() => openHelp('insights')} />
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>Insights</Typography>

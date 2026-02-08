@@ -66,6 +66,7 @@ import {
   Summarize,
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
+import { PageHelp, HelpButton, useHelp } from '@/components/help';
 import {
   AreaChart,
   Area,
@@ -231,6 +232,7 @@ function stringToColor(str: string): string {
 }
 
 export default function DashboardPage() {
+  const { openHelp } = useHelp();
   const [tabValue, setTabValue] = useState(0);
   const [data, setData] = useState<DashboardData | null>(null);
   const [execData, setExecData] = useState<ExecutiveData | null>(null);
@@ -839,11 +841,17 @@ export default function DashboardPage() {
 
   return (
     <Box>
+      {/* Page Help */}
+      <PageHelp page="dashboard" onOpenDrawer={() => openHelp('dashboard')} />
+
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>Dashboard</Typography>
-          <Typography color="text.secondary">Developer insights from the field</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>Dashboard</Typography>
+            <Typography color="text.secondary">Developer insights from the field</Typography>
+          </Box>
+          <HelpButton topic="dashboard" onOpenDrawer={openHelp} />
         </Box>
         <Stack direction="row" spacing={1}>
           <MuiTooltip title="Refresh">
