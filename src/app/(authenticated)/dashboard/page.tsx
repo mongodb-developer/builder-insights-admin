@@ -745,6 +745,77 @@ export default function DashboardPage() {
       });
     }
 
+    // AI Executive Summary (if available)
+    if (aiSummary) {
+      pdf.addPage();
+      yPos = margin;
+
+      // Section header with purple accent
+      pdf.setFillColor(124, 58, 237);
+      pdf.rect(margin, yPos, 4, 10, 'F');
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 30, 43);
+      pdf.text('AI Executive Summary', margin + 8, yPos + 7);
+      yPos += 15;
+
+      // Period info
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`${aiSummary.period} Analysis • Generated ${new Date(aiSummary.generatedAt).toLocaleDateString()}`, margin, yPos);
+      yPos += 10;
+
+      // Key themes
+      if (aiSummary.themes && aiSummary.themes.length > 0) {
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 30, 43);
+        pdf.text('Key Themes:', margin, yPos);
+        yPos += 6;
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        let chipX = margin;
+        aiSummary.themes.forEach((theme) => {
+          const chipWidth = pdf.getTextWidth(theme) + 8;
+          if (chipX + chipWidth > pageWidth - margin) {
+            chipX = margin;
+            yPos += 8;
+          }
+          pdf.setFillColor(240, 230, 255);
+          pdf.roundedRect(chipX, yPos - 4, chipWidth, 7, 2, 2, 'F');
+          pdf.setTextColor(124, 58, 237);
+          pdf.setFontSize(8);
+          pdf.text(theme, chipX + 4, yPos);
+          chipX += chipWidth + 3;
+        });
+        yPos += 12;
+      }
+
+      // Summary content
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(40, 40, 40);
+
+      const summaryLines = pdf.splitTextToSize(aiSummary.summary, contentWidth);
+      const lineHeight = 5;
+
+      summaryLines.forEach((line: string) => {
+        if (yPos > pageHeight - margin - 15) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        pdf.text(line, margin, yPos);
+        yPos += lineHeight;
+      });
+
+      yPos += 8;
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Based on ${aiSummary.stats.total} insights from ${aiSummary.stats.events} events`, margin, yPos);
+    }
+
     // Footer
     pdf.setFontSize(8);
     pdf.setTextColor(150, 150, 150);
@@ -860,7 +931,23 @@ export default function DashboardPage() {
             </IconButton>
           </MuiTooltip>
           <Button variant="outlined" startIcon={<Download />} onClick={handleExportCSV}>
-            Export CSV
+            CSV
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<PictureAsPdf />} 
+            onClick={tabValue === 0 ? downloadPDF : downloadExecPDF}
+            disabled={tabValue === 0 ? !aiSummary : !execData}
+          >
+            PDF
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<Print />} 
+            onClick={tabValue === 0 ? handlePrint : handleExecPrint}
+            disabled={tabValue === 0 ? !aiSummary : !execData}
+          >
+            Print
           </Button>
         </Stack>
       </Box>
