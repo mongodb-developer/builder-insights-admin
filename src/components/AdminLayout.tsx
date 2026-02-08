@@ -135,6 +135,7 @@ function AdminLayoutInner({ children }: Props) {
           ) : (
             <ListItem key={item.href} disablePadding>
               <ListItemButton
+                data-tour={`nav-${item.href?.replace('/', '')}`}
                 onClick={() => handleNavClick(item.href!)}
                 selected={pathname === item.href}
                 sx={{

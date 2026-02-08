@@ -35,8 +35,9 @@ const defaultSteps: TourStep[] = [
     ),
   },
   {
-    target: '[href="/dashboard"]',
+    target: '[data-tour="nav-dashboard"]',
     title: 'Dashboard',
+    placement: 'right',
     content: (
       <Typography variant="body2">
         Your command center! See AI-generated summaries, trends, top contributors, and critical items at a glance.
@@ -44,8 +45,9 @@ const defaultSteps: TourStep[] = [
     ),
   },
   {
-    target: '[href="/events"]',
+    target: '[data-tour="nav-events"]',
     title: 'Events',
+    placement: 'right',
     content: (
       <Typography variant="body2">
         Manage conferences and meetups here. Mark events as &quot;active&quot; to make them available in the mobile app.
@@ -53,8 +55,9 @@ const defaultSteps: TourStep[] = [
     ),
   },
   {
-    target: '[href="/insights"]',
+    target: '[data-tour="nav-insights"]',
     title: 'Insights',
+    placement: 'right',
     content: (
       <Typography variant="body2">
         Browse all captured developer feedback. Filter by sentiment, priority, event, or product area.
@@ -62,8 +65,9 @@ const defaultSteps: TourStep[] = [
     ),
   },
   {
-    target: '[href="/leaderboard"]',
+    target: '[data-tour="nav-leaderboard"]',
     title: 'Leaderboard',
+    placement: 'right',
     content: (
       <Typography variant="body2">
         Celebrate your top contributors! The leaderboard ranks team members by their insight contributions.
