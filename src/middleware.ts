@@ -40,6 +40,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
+  // Allow static files (images, etc.)
+  if (/\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2)$/i.test(pathname)) {
+    return NextResponse.next();
+  }
+
   // Redirect authenticated users from login to dashboard
   if (pathname === '/login' && token) {
     try {
