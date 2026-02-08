@@ -104,26 +104,30 @@ export default function OnboardingTour({
   onComplete,
 }: OnboardingTourProps) {
   const [run, setRun] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
     // Check if tour has been completed
     const completed = localStorage.getItem(TOUR_COMPLETED_KEY);
     if (!completed || forceShow) {
-      // Small delay to let the page render
-      const timer = setTimeout(() => setRun(true), 500);
+      // Small delay to let the page render and sidebar to be visible
+      const timer = setTimeout(() => setRun(true), 800);
       return () => clearTimeout(timer);
     }
   }, [forceShow]);
 
-  const handleCallback = (data: { status: string; index: number; type: string }) => {
-    const { status, index, type } = data;
+  // Handle joyride callbacks
+  const handleCallback = (data: { status: string; action: string; type: string }) => {
+    const { status, action } = data;
 
-    if (type === 'step:after') {
-      setStepIndex(index + 1);
+    // Handle completion states
+    if (status === 'finished' || status === 'skipped') {
+      setRun(false);
+      localStorage.setItem(TOUR_COMPLETED_KEY, 'true');
+      onComplete?.();
     }
 
-    if (status === 'finished' || status === 'skipped') {
+    // Handle close button click
+    if (action === 'close') {
       setRun(false);
       localStorage.setItem(TOUR_COMPLETED_KEY, 'true');
       onComplete?.();
@@ -148,10 +152,10 @@ export default function OnboardingTour({
         ),
       }))}
       run={run}
-      stepIndex={stepIndex}
       continuous
       showProgress
       showSkipButton
+      disableScrolling
       callback={handleCallback}
       styles={{
         options: {
