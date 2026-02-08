@@ -125,9 +125,17 @@ export default function LandingPage() {
             borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-            📊 DevRel Insights
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              component="img"
+              src="/mongodb-leaf.png"
+              alt="MongoDB"
+              sx={{ width: 28, height: 42 }}
+            />
+            <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              DevRel Insights
+            </Typography>
+          </Box>
           <Stack direction="row" spacing={2}>
             <Button
               component={Link}
