@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
     
+    // TESTER BYPASS: Allow demo account without sending email
+    const TESTER_EMAIL = 'demo@devrelinsights.app';
+    if (normalizedEmail === TESTER_EMAIL) {
+      // Return success - user will enter code 999999 which is handled in verify-code
+      return NextResponse.json({ sent: true });
+    }
+    
     // Only allow @mongodb.com emails
     const domain = normalizedEmail.split('@')[1];
     if (domain !== 'mongodb.com') {
