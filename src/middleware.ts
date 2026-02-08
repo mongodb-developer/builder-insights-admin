@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   '/api/sessions',  // Session management
   '/api/bugs',      // Bug reports from mobile app
   '/api/analytics', // Mobile app usage tracking (world map)
+  '/api/stats',     // Mobile app team stats (executive dashboard)
 ];
 
 // Paths that require admin role
