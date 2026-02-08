@@ -29,6 +29,41 @@ export async function POST(request: NextRequest) {
 
     const db = await getDb();
 
+    // TESTER ACCOUNT: For App Store reviewers and beta testers
+    const TESTER_EMAIL = 'demo@devrelinsights.app';
+    const TESTER_CODE = '999999';
+    
+    if (normalizedEmail === TESTER_EMAIL && normalizedCode === TESTER_CODE) {
+      const jwt = await createToken({
+        email: TESTER_EMAIL,
+        name: 'Demo User',
+        role: 'advocate',
+        isAdmin: false,
+        advocateId: 'demo_user',
+      });
+
+      const demoAdvocate = {
+        _id: 'demo_user',
+        email: TESTER_EMAIL,
+        name: 'Demo User',
+        role: 'advocate',
+      };
+
+      if (isMobile) {
+        return NextResponse.json({ advocate: demoAdvocate, token: jwt });
+      }
+
+      const response = NextResponse.json({ success: true });
+      response.cookies.set(COOKIE_NAME, jwt, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60,
+      });
+      return response;
+    }
+
     // DEV BYPASS: Code 123456 works for any @mongodb.com email
     if (normalizedCode === '123456' && normalizedEmail.endsWith('@mongodb.com')) {
       // Try to find existing advocate to get their actual role
