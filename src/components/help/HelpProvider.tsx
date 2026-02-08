@@ -1,8 +1,14 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import HelpDrawer from './HelpDrawer';
-import OnboardingTour from './OnboardingTour';
+
+// Dynamic import OnboardingTour to avoid SSR hydration issues with react-joyride
+const OnboardingTour = dynamic(() => import('./OnboardingTour'), { 
+  ssr: false,
+  loading: () => null,
+});
 
 interface HelpContextValue {
   openHelp: (topic?: string) => void;

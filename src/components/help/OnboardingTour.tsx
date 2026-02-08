@@ -1,12 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import Joyride from 'react-joyride';
 import { Box, Typography, Button } from '@mui/material';
 import { mongoColors } from '@/theme';
-
-// Dynamic import to avoid SSR issues with react-joyride
-const Joyride = dynamic(() => import('react-joyride'), { ssr: false });
 
 const TOUR_COMPLETED_KEY = 'devrel-insights-tour-completed';
 
@@ -133,8 +130,6 @@ export default function OnboardingTour({
       onComplete?.();
     }
   };
-
-  if (typeof window === 'undefined') return null;
 
   return (
     <Joyride
