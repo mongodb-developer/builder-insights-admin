@@ -118,7 +118,7 @@ function stringToColor(str: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export default function AnalyticsPage() {
+export default function LeaderboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>Analytics</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>Leaderboard</Typography>
         <Grid container spacing={3}>
           {[1, 2, 3, 4].map((i) => (
             <Grid key={i} size={{ xs: 12, md: 6 }}>
@@ -173,14 +173,14 @@ export default function AnalyticsPage() {
   if (!hasData) {
     return (
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>Analytics</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>Leaderboard</Typography>
         <Card>
           <CardContent sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               No Data Yet
             </Typography>
             <Typography color="text.secondary">
-              Analytics will populate as insights are captured from the mobile app.
+              Leaderboard will populate as insights are captured from the mobile app.
             </Typography>
           </CardContent>
         </Card>
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
   return (
     <Box>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>Analytics</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>Leaderboard</Typography>
         <Typography color="text.secondary">
           Insights breakdown and trends
         </Typography>
