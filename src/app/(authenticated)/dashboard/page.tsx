@@ -385,6 +385,434 @@ export default function DashboardPage() {
     } catch (error) { console.error('Export failed:', error); }
   };
 
+  const downloadPDF = () => {
+    if (!aiSummary || !data) return;
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let yPos = margin;
+
+    // MongoDB green header bar
+    pdf.setFillColor(0, 237, 100);
+    pdf.rect(0, 0, pageWidth, 25, 'F');
+
+    // Title
+    pdf.setTextColor(0, 30, 43);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DevRel Insights Executive Summary', margin, 17);
+
+    yPos = 35;
+
+    // Period and date
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`${aiSummary.period} Report`, margin, yPos);
+    pdf.text(`Generated: ${new Date(aiSummary.generatedAt).toLocaleDateString()}`, pageWidth - margin - 50, yPos);
+    
+    yPos += 12;
+
+    // Stats boxes
+    const boxWidth = (contentWidth - 10) / 3;
+    const statsData = [
+      { label: 'Insights', value: aiSummary.stats.total, color: [0, 237, 100] as [number, number, number] },
+      { label: 'Events', value: aiSummary.stats.events, color: [1, 107, 248] as [number, number, number] },
+      { label: 'Advocates', value: aiSummary.stats.advocates, color: [124, 58, 237] as [number, number, number] },
+    ];
+    
+    statsData.forEach((stat, idx) => {
+      const boxX = margin + idx * (boxWidth + 5);
+      pdf.setFillColor(250, 250, 250);
+      pdf.roundedRect(boxX, yPos, boxWidth, 18, 2, 2, 'F');
+      pdf.setFillColor(...stat.color);
+      pdf.rect(boxX, yPos, 3, 18, 'F');
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...stat.color);
+      pdf.text(String(stat.value), boxX + 8, yPos + 12);
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(stat.label, boxX + 28, yPos + 12);
+    });
+    
+    yPos += 28;
+
+    // Key Themes
+    if (aiSummary.themes && aiSummary.themes.length > 0) {
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 30, 43);
+      pdf.text('Key Themes', margin, yPos);
+      yPos += 7;
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      
+      let chipX = margin;
+      aiSummary.themes.forEach((theme) => {
+        const chipWidth = pdf.getTextWidth(theme) + 8;
+        if (chipX + chipWidth > pageWidth - margin) {
+          chipX = margin;
+          yPos += 8;
+        }
+        pdf.setFillColor(240, 230, 255);
+        pdf.roundedRect(chipX, yPos - 4, chipWidth, 7, 2, 2, 'F');
+        pdf.setTextColor(124, 58, 237);
+        pdf.setFontSize(8);
+        pdf.text(theme, chipX + 4, yPos);
+        chipX += chipWidth + 3;
+      });
+      yPos += 12;
+    }
+
+    // Charts summary section
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Insights Overview', margin, yPos);
+    yPos += 8;
+
+    // Sentiment breakdown
+    const sentimentData = data.charts.sentiment;
+    const total = sentimentData.reduce((sum, s) => sum + s.value, 0);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    sentimentData.forEach((s, idx) => {
+      const colors: Record<string, [number, number, number]> = {
+        Positive: [0, 237, 100],
+        Neutral: [1, 107, 248],
+        Negative: [239, 68, 68],
+      };
+      const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+      pdf.setFillColor(...(colors[s.name] || [150, 150, 150]));
+      pdf.rect(margin, yPos + idx * 8, 4, 5, 'F');
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`${s.name}: ${s.value} (${pct}%)`, margin + 8, yPos + idx * 8 + 4);
+    });
+    yPos += 30;
+
+    // Top Product Areas
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Top Product Areas', margin, yPos);
+    yPos += 6;
+    
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    data.charts.productAreas.slice(0, 5).forEach((area, idx) => {
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`${idx + 1}. ${area.name}: ${area.count}`, margin, yPos + idx * 6);
+    });
+    yPos += 38;
+
+    // Summary content
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Executive Summary', margin, yPos);
+    yPos += 8;
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(40, 40, 40);
+    
+    const lines = pdf.splitTextToSize(aiSummary.summary, contentWidth);
+    const lineHeight = 5;
+    
+    lines.forEach((line: string) => {
+      if (yPos > pageHeight - margin - 15) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      pdf.text(line, margin, yPos);
+      yPos += lineHeight;
+    });
+
+    // Footer
+    pdf.setFontSize(8);
+    pdf.setTextColor(150, 150, 150);
+    pdf.text('MongoDB Developer Relations • devrel-insights-admin.vercel.app', margin, pageHeight - 10);
+
+    // Download
+    const filename = `devrel-insights-${aiSummary.period.toLowerCase().replace(' ', '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(filename);
+  };
+
+  const handlePrint = () => {
+    if (!aiSummary) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>DevRel Insights - ${aiSummary.period}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: #001E2B; }
+          .header { background: #00ED64; padding: 20px; margin: -40px -40px 30px -40px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .meta { color: #666; margin-bottom: 20px; display: flex; justify-content: space-between; }
+          .stats { background: #f5f5f5; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; }
+          .themes { margin-bottom: 20px; }
+          .themes h3 { font-size: 14px; margin-bottom: 8px; }
+          .theme-chip { display: inline-block; background: #f0e6ff; color: #7C3AED; padding: 4px 12px; border-radius: 16px; margin: 4px 4px 4px 0; font-size: 12px; }
+          .summary { line-height: 1.8; }
+          .summary p { margin-bottom: 16px; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 12px; }
+          @media print { .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header"><h1>DevRel Insights Executive Summary</h1></div>
+        <div class="meta">
+          <span>${aiSummary.period} Report</span>
+          <span>Generated: ${new Date(aiSummary.generatedAt).toLocaleDateString()}</span>
+        </div>
+        <div class="stats">
+          <strong>${aiSummary.stats.total}</strong> Insights &nbsp;•&nbsp;
+          <strong>${aiSummary.stats.events}</strong> Events &nbsp;•&nbsp;
+          <strong>${aiSummary.stats.advocates}</strong> Advocates
+        </div>
+        ${aiSummary.themes?.length ? `
+          <div class="themes">
+            <h3>Key Themes</h3>
+            ${aiSummary.themes.map((t) => `<span class="theme-chip">${t}</span>`).join('')}
+          </div>
+        ` : ''}
+        <div class="summary">
+          ${aiSummary.summary.split('\n\n').map((p) => `<p>${p}</p>`).join('')}
+        </div>
+        <div class="footer">MongoDB Developer Relations • devrel-insights-admin.vercel.app</div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const downloadExecPDF = () => {
+    if (!execData) return;
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let yPos = margin;
+
+    // Header
+    pdf.setFillColor(0, 237, 100);
+    pdf.rect(0, 0, pageWidth, 25, 'F');
+    pdf.setTextColor(0, 30, 43);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DevRel Insights Executive Report', margin, 17);
+
+    yPos = 35;
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPos);
+    yPos += 15;
+
+    // Key Metrics
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Key Metrics', margin, yPos);
+    yPos += 10;
+
+    const metrics = [
+      { label: 'Total Insights', value: execData.summary.totalInsights, sub: `${execData.summary.thisMonth} this month` },
+      { label: 'This Week', value: execData.summary.thisWeek, sub: `${weekTrendPct >= 0 ? '+' : ''}${weekTrendPct}% vs last week` },
+      { label: 'Events Tracked', value: execData.summary.totalEvents, sub: 'across all regions' },
+      { label: 'Active Advocates', value: execData.summary.activeAdvocates, sub: 'capturing insights' },
+    ];
+
+    const boxWidth = (contentWidth - 15) / 4;
+    metrics.forEach((m, idx) => {
+      const boxX = margin + idx * (boxWidth + 5);
+      pdf.setFillColor(245, 245, 245);
+      pdf.roundedRect(boxX, yPos, boxWidth, 25, 2, 2, 'F');
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(m.label, boxX + 3, yPos + 6);
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 30, 43);
+      pdf.text(String(m.value), boxX + 3, yPos + 16);
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(m.sub, boxX + 3, yPos + 22);
+    });
+    yPos += 35;
+
+    // Sentiment
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Sentiment Breakdown', margin, yPos);
+    yPos += 8;
+
+    const sentColors: Record<string, [number, number, number]> = {
+      positive: [0, 237, 100], neutral: [1, 107, 248], negative: [239, 68, 68]
+    };
+    ['positive', 'neutral', 'negative'].forEach((key, idx) => {
+      const count = execData.sentiment[key as keyof typeof execData.sentiment];
+      const pct = totalSentiment > 0 ? Math.round((count / totalSentiment) * 100) : 0;
+      pdf.setFillColor(...sentColors[key]);
+      pdf.rect(margin, yPos + idx * 7, 4, 5, 'F');
+      pdf.setFontSize(9);
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${count} (${pct}%)`, margin + 8, yPos + idx * 7 + 4);
+    });
+    yPos += 30;
+
+    // Priority
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Priority Breakdown', margin, yPos);
+    yPos += 8;
+
+    ['Critical', 'High', 'Medium', 'Low'].forEach((p, idx) => {
+      pdf.setFontSize(9);
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`${p}: ${execData.byPriority[p] || 0}`, margin, yPos + idx * 6);
+    });
+    yPos += 30;
+
+    // Top Advocates
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Top Advocates', margin, yPos);
+    yPos += 8;
+
+    execData.topAdvocates.forEach((a, idx) => {
+      pdf.setFontSize(9);
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`${idx + 1}. ${a.name}: ${a.count} insights`, margin, yPos + idx * 6);
+    });
+    yPos += 40;
+
+    // Product Areas
+    if (yPos > pageHeight - 60) { pdf.addPage(); yPos = margin; }
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 30, 43);
+    pdf.text('Product Areas', margin, yPos);
+    yPos += 8;
+
+    Object.entries(execData.byProductArea).sort((a, b) => b[1] - a[1]).slice(0, 8).forEach(([area, count], idx) => {
+      pdf.setFontSize(9);
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`${area}: ${count}`, margin, yPos + idx * 6);
+    });
+    yPos += 55;
+
+    // High Priority Insights
+    if (execData.recentHighPriority.length > 0) {
+      if (yPos > pageHeight - 80) { pdf.addPage(); yPos = margin; }
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 30, 43);
+      pdf.text('Recent High-Priority Insights', margin, yPos);
+      yPos += 10;
+
+      execData.recentHighPriority.slice(0, 5).forEach((insight) => {
+        if (yPos > pageHeight - 30) { pdf.addPage(); yPos = margin; }
+        pdf.setFillColor(insight.priority === 'Critical' ? 239 : 249, insight.priority === 'Critical' ? 68 : 115, insight.priority === 'Critical' ? 68 : 22);
+        pdf.rect(margin, yPos, 3, 12, 'F');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`[${insight.priority}] ${insight.type}`, margin + 5, yPos + 4);
+        pdf.setFontSize(9);
+        pdf.setTextColor(40, 40, 40);
+        const text = insight.text.length > 80 ? insight.text.slice(0, 80) + '...' : insight.text;
+        pdf.text(text, margin + 5, yPos + 10);
+        yPos += 16;
+      });
+    }
+
+    // Footer
+    pdf.setFontSize(8);
+    pdf.setTextColor(150, 150, 150);
+    pdf.text('MongoDB Developer Relations • devrel-insights-admin.vercel.app', margin, pageHeight - 10);
+
+    pdf.save(`devrel-exec-report-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleExecPrint = () => {
+    if (!execData) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>DevRel Insights Executive Report</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: #001E2B; }
+          .header { background: #00ED64; padding: 20px; margin: -40px -40px 30px -40px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+          .metric { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+          .metric-value { font-size: 24px; font-weight: 700; }
+          .metric-label { font-size: 12px; color: #666; }
+          .section { margin-bottom: 25px; }
+          .section h3 { font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+          .insight { padding: 10px; margin-bottom: 10px; border-left: 3px solid #F97316; background: #fff8f5; }
+          .insight.critical { border-color: #EF4444; background: #fef2f2; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 12px; }
+          @media print { .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header"><h1>DevRel Insights Executive Report</h1></div>
+        <div class="grid">
+          <div class="metric"><div class="metric-label">Total Insights</div><div class="metric-value">${execData.summary.totalInsights}</div></div>
+          <div class="metric"><div class="metric-label">This Week</div><div class="metric-value">${execData.summary.thisWeek}</div></div>
+          <div class="metric"><div class="metric-label">Events</div><div class="metric-value">${execData.summary.totalEvents}</div></div>
+          <div class="metric"><div class="metric-label">Advocates</div><div class="metric-value">${execData.summary.activeAdvocates}</div></div>
+        </div>
+        <div class="section">
+          <h3>Sentiment</h3>
+          <p>Positive: ${execData.sentiment.positive} • Neutral: ${execData.sentiment.neutral} • Negative: ${execData.sentiment.negative}</p>
+        </div>
+        <div class="section">
+          <h3>Top Advocates</h3>
+          <ol>${execData.topAdvocates.map(a => `<li>${a.name} (${a.count})</li>`).join('')}</ol>
+        </div>
+        ${execData.recentHighPriority.length > 0 ? `
+          <div class="section">
+            <h3>High-Priority Insights</h3>
+            ${execData.recentHighPriority.slice(0, 5).map(i => `
+              <div class="insight ${i.priority === 'Critical' ? 'critical' : ''}">
+                <strong>[${i.priority}]</strong> ${i.type}<br/>
+                ${i.text.slice(0, 150)}${i.text.length > 150 ? '...' : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div class="footer">MongoDB Developer Relations • Generated ${new Date().toLocaleDateString()}</div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const handleRefresh = () => { setRefreshing(true); loadExecData(); };
 
   if (loading) {
@@ -491,8 +919,8 @@ export default function DashboardPage() {
                         {copied ? <Check color="success" /> : <ContentCopy fontSize="small" />}
                       </IconButton>
                     </MuiTooltip>
-                    <MuiTooltip title="Download PDF"><IconButton size="small"><PictureAsPdf fontSize="small" /></IconButton></MuiTooltip>
-                    <MuiTooltip title="Print"><IconButton size="small"><Print fontSize="small" /></IconButton></MuiTooltip>
+                    <MuiTooltip title="Download PDF"><IconButton size="small" onClick={downloadPDF}><PictureAsPdf fontSize="small" /></IconButton></MuiTooltip>
+                    <MuiTooltip title="Print"><IconButton size="small" onClick={handlePrint}><Print fontSize="small" /></IconButton></MuiTooltip>
                   </Stack>
                   <Typography variant="body1" sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap', pr: 4 }}>{aiSummary.summary}</Typography>
                 </Paper>
@@ -647,6 +1075,16 @@ export default function DashboardPage() {
 
       {/* Tab 1: Executive Reports */}
       <TabPanel value={tabValue} index={1}>
+        {/* Export Actions */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3, gap: 1 }}>
+          <Button variant="outlined" startIcon={<PictureAsPdf />} onClick={downloadExecPDF}>
+            Export PDF
+          </Button>
+          <Button variant="outlined" startIcon={<Print />} onClick={handleExecPrint}>
+            Print Report
+          </Button>
+        </Box>
+        
         {execLoading ? (
           <Grid container spacing={3}>
             {[1, 2, 3, 4].map((i) => <Grid key={i} size={{ xs: 12, sm: 6, md: 3 }}><Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} /></Grid>)}
