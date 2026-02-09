@@ -4,9 +4,14 @@ import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-init OpenAI client to avoid build-time errors when API key is missing
+let openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 // GET /api/insights/summary - Get cached summary
 export async function GET(request: NextRequest) {
@@ -191,7 +196,7 @@ Use a professional but engaging tone. Include specific numbers. This should feel
 
 Do NOT use markdown formatting like ** or headers. Write in plain paragraphs.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -212,7 +217,7 @@ Do NOT use markdown formatting like ** or headers. Write in plain paragraphs.`;
 Feature Requests: ${featureRequests.slice(0, 8).join(' | ')}
 Pain Points: ${painPoints.slice(0, 5).join(' | ')}`;
 
-    const themesCompletion = await openai.chat.completions.create({
+    const themesCompletion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: themesPrompt }],
       temperature: 0.5,

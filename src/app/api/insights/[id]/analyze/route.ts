@@ -14,9 +14,14 @@ import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-init OpenAI client to avoid build-time errors when API key is missing
+let openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -172,7 +177,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.log(`[AI Analysis] Generating for insight ${id}...`);
     const startTime = Date.now();
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
