@@ -244,6 +244,7 @@ export default function DashboardPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryPeriod, setSummaryPeriod] = useState<string>('quarter');
   const [copied, setCopied] = useState(false);
+  const [trendChartMode, setTrendChartMode] = useState<'total' | 'sentiment'>('total');
   const theme = useTheme();
 
   // Load dashboard data
@@ -1059,7 +1060,22 @@ export default function DashboardPage() {
               <Grid size={{ xs: 12, lg: 8 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>Insights Trend (90 Days)</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>Insights Trend (90 Days)</Typography>
+                      <ToggleButtonGroup
+                        size="small"
+                        value={trendChartMode}
+                        exclusive
+                        onChange={(_, v) => v && setTrendChartMode(v)}
+                      >
+                        <ToggleButton value="total">
+                          <MuiTooltip title="Total Insights"><Assessment sx={{ fontSize: 18 }} /></MuiTooltip>
+                        </ToggleButton>
+                        <ToggleButton value="sentiment">
+                          <MuiTooltip title="By Sentiment"><SentimentSatisfied sx={{ fontSize: 18 }} /></MuiTooltip>
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                    </Box>
                     <ResponsiveContainer width="100%" height={300}>
                       <AreaChart data={data.charts.insightsByDay}>
                         <defs>
@@ -1067,12 +1083,33 @@ export default function DashboardPage() {
                             <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3} />
                             <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0} />
                           </linearGradient>
+                          <linearGradient id="colorPositive" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={SENTIMENT_COLORS.Positive} stopOpacity={0.4} />
+                            <stop offset="95%" stopColor={SENTIMENT_COLORS.Positive} stopOpacity={0.1} />
+                          </linearGradient>
+                          <linearGradient id="colorNeutral" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={SENTIMENT_COLORS.Neutral} stopOpacity={0.4} />
+                            <stop offset="95%" stopColor={SENTIMENT_COLORS.Neutral} stopOpacity={0.1} />
+                          </linearGradient>
+                          <linearGradient id="colorNegative" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={SENTIMENT_COLORS.Negative} stopOpacity={0.4} />
+                            <stop offset="95%" stopColor={SENTIMENT_COLORS.Negative} stopOpacity={0.1} />
+                          </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.primary, 0.1)} />
                         <XAxis dataKey="date" stroke={theme.palette.text.secondary} tick={{ fontSize: 12 } as any} tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
                         <YAxis stroke={theme.palette.text.secondary} tick={{ fontSize: 12 } as any} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Area type="monotone" dataKey="total" stroke={COLORS.primary} strokeWidth={2} fill="url(#colorTotal)" name="Total" />
+                        {trendChartMode === 'total' ? (
+                          <Area type="monotone" dataKey="total" stroke={COLORS.primary} strokeWidth={2} fill="url(#colorTotal)" name="Total" />
+                        ) : (
+                          <>
+                            <Area type="monotone" dataKey="positive" stackId="1" stroke={SENTIMENT_COLORS.Positive} strokeWidth={1.5} fill="url(#colorPositive)" name="Positive" />
+                            <Area type="monotone" dataKey="neutral" stackId="1" stroke={SENTIMENT_COLORS.Neutral} strokeWidth={1.5} fill="url(#colorNeutral)" name="Neutral" />
+                            <Area type="monotone" dataKey="negative" stackId="1" stroke={SENTIMENT_COLORS.Negative} strokeWidth={1.5} fill="url(#colorNegative)" name="Negative" />
+                            <Legend />
+                          </>
+                        )}
                       </AreaChart>
                     </ResponsiveContainer>
                   </CardContent>
