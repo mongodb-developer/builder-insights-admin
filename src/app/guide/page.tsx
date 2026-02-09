@@ -1,13 +1,17 @@
 'use client';
 
 /**
- * DevRel Insights - Quick Start Guide
+ * DevRel Insights - Comprehensive User Guide
  * 
- * Public page (no auth required) with step-by-step instructions
- * for new advocates getting started with the app.
+ * Public documentation page covering:
+ * - Mobile app quick start
+ * - Web dashboard usage
+ * - Role-based access
+ * - API documentation
+ * - FAQ
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -27,6 +31,14 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -39,20 +51,24 @@ import DownloadIcon from '@mui/icons-material/Download';
 import MicIcon from '@mui/icons-material/Mic';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
-import LightModeIcon from '@mui/icons-material/LightMode';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
 import EventIcon from '@mui/icons-material/Event';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
-import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
-import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
-import OfflineBoltIcon from '@mui/icons-material/OfflineBolt';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ApiIcon from '@mui/icons-material/Api';
+import PersonIcon from '@mui/icons-material/Person';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CodeIcon from '@mui/icons-material/Code';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
+import ComputerIcon from '@mui/icons-material/Computer';
+import SecurityIcon from '@mui/icons-material/Security';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 // MongoDB-themed dark theme
 const theme = createTheme({
@@ -99,51 +115,70 @@ const theme = createTheme({
   },
 });
 
-interface StepCardProps {
-  number: number;
-  title: string;
-  children: React.ReactNode;
-  icon?: React.ReactNode;
-}
+// Code block component
+function CodeBlock({ children, title }: { children: string; title?: string }) {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(children);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-function StepCard({ number, title, children, icon }: StepCardProps) {
   return (
-    <Card sx={{ mb: 3, bgcolor: 'background.paper', border: '1px solid rgba(255,255,255,0.1)' }}>
-      <CardContent sx={{ p: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="flex-start">
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              bgcolor: 'primary.main',
-              color: '#001E2B',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: '1.25rem',
-              flexShrink: 0,
-            }}
-          >
-            {number}
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-              {icon}
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {title}
-              </Typography>
-            </Stack>
-            {children}
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
+    <Box sx={{ position: 'relative', my: 2 }}>
+      {title && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', mb: 0.5, display: 'block' }}>
+          {title}
+        </Typography>
+      )}
+      <Paper
+        sx={{
+          bgcolor: '#001E2B',
+          p: 2,
+          borderRadius: 1,
+          fontFamily: 'monospace',
+          fontSize: 13,
+          overflow: 'auto',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}
+      >
+        <Button
+          size="small"
+          onClick={handleCopy}
+          sx={{
+            position: 'absolute',
+            top: title ? 28 : 8,
+            right: 8,
+            minWidth: 'auto',
+            p: 0.5,
+            color: 'text.secondary',
+          }}
+        >
+          {copied ? <CheckCircleIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+        </Button>
+        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{children}</pre>
+      </Paper>
+    </Box>
   );
 }
 
-export default function QuickStartGuide() {
+// Section component
+function Section({ id, title, icon, children }: { id: string; title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Box id={id} sx={{ mb: 6, scrollMarginTop: 100 }}>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+        <Box sx={{ color: 'primary.main' }}>{icon}</Box>
+        <Typography variant="h4">{title}</Typography>
+      </Stack>
+      {children}
+    </Box>
+  );
+}
+
+export default function GuidePage() {
+  const [activeTab, setActiveTab] = useState(0);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -158,6 +193,10 @@ export default function QuickStartGuide() {
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
+            position: 'sticky',
+            top: 0,
+            bgcolor: 'background.default',
+            zIndex: 1000,
           }}
         >
           <Button
@@ -168,368 +207,714 @@ export default function QuickStartGuide() {
           >
             Back to Home
           </Button>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-            📊 DevRel Insights
-          </Typography>
-          <Button
-            component={Link}
-            href="/login"
-            variant="outlined"
-            color="primary"
-            size="small"
-          >
-            Admin Login
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              component={Link}
+              href="/login"
+              variant="outlined"
+              color="primary"
+            >
+              Sign In
+            </Button>
+          </Stack>
         </Box>
 
-        <Container maxWidth="md" sx={{ py: 6 }}>
-          {/* Title */}
-          <Box textAlign="center" mb={6}>
-            <Chip label="For New Advocates" color="primary" sx={{ mb: 2 }} />
-            <Typography variant="h3" sx={{ mb: 2 }}>
-              Quick Start Guide
+        <Container maxWidth="lg" sx={{ py: 6 }}>
+          {/* Page Header */}
+          <Box sx={{ mb: 6, textAlign: 'center' }}>
+            <Typography variant="h2" sx={{ mb: 2 }}>
+              DevRel Insights Guide
             </Typography>
-            <Typography color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
-              Everything you need to know to start capturing developer insights
-              at conferences, meetups, and customer conversations.
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
+              Everything you need to know about capturing, managing, and analyzing developer insights.
             </Typography>
           </Box>
 
-          {/* Step 1: Get the App */}
-          <StepCard number={1} title="Get the App" icon={<DownloadIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              DevRel Insights is available on iOS via TestFlight. Android coming soon.
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AppleIcon />}
-              href="https://testflight.apple.com/join/YOUR_CODE"
-              target="_blank"
-              sx={{ color: '#001E2B', mb: 2 }}
+          {/* Navigation Tabs */}
+          <Paper sx={{ mb: 4, bgcolor: 'background.paper' }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_, v) => setActiveTab(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTab-root': { minHeight: 64, textTransform: 'none', fontWeight: 600 },
+                '& .Mui-selected': { color: 'primary.main' },
+              }}
             >
-              Download from TestFlight
-            </Button>
-            <Alert severity="info" sx={{ bgcolor: 'rgba(33, 150, 243, 0.1)' }}>
-              First time on TestFlight? You'll need the free TestFlight app from the App Store first.
-            </Alert>
-          </StepCard>
+              <Tab icon={<PhoneIphoneIcon />} label="Mobile App" />
+              <Tab icon={<ComputerIcon />} label="Dashboard" />
+              <Tab icon={<SecurityIcon />} label="Roles" />
+              <Tab icon={<ApiIcon />} label="API" />
+              <Tab icon={<HelpOutlineIcon />} label="FAQ" />
+            </Tabs>
+          </Paper>
 
-          {/* Step 2: Sign In */}
-          <StepCard number={2} title="Sign In with Magic Link" icon={<TouchAppIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              We use passwordless authentication. Enter your MongoDB email and check your inbox for a sign-in link.
-            </Typography>
-            <List dense>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Open the app and tap 'Sign In'" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Enter your @mongodb.com email" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Check email and tap the magic link" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="You're in! The link opens the app automatically" />
-              </ListItem>
-            </List>
-          </StepCard>
+          {/* Mobile App Guide */}
+          {activeTab === 0 && (
+            <Box>
+              <Section id="mobile-install" title="Getting Started" icon={<DownloadIcon sx={{ fontSize: 32 }} />}>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  DevRel Insights is currently in beta. Join via TestFlight to get early access.
+                </Alert>
+                
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>1. Install from TestFlight</Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Open TestFlight on your iPhone" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Tap 'Redeem' and enter the code, or use the link below" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Install DevRel Insights and open the app" />
+                      </ListItem>
+                    </List>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<AppleIcon />}
+                      href="https://testflight.apple.com/join/rAqHXs1Y"
+                      target="_blank"
+                      sx={{ mt: 2, color: '#001E2B' }}
+                    >
+                      Join TestFlight Beta
+                    </Button>
+                  </CardContent>
+                </Card>
 
-          {/* Step 3: Capture Your First Insight */}
-          <StepCard number={3} title="Capture Your First Insight" icon={<MicIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              The fastest way to capture an insight is with voice. Tap the microphone and speak naturally.
-            </Typography>
-            
-            <Paper sx={{ p: 2, mb: 2, bgcolor: 'rgba(0, 237, 100, 0.1)', border: '1px solid rgba(0, 237, 100, 0.3)' }}>
-              <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 1 }}>
-                💡 Pro Tip: What to Say
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                "Just talked to a developer at Acme Corp who's frustrated with the aggregation pipeline syntax. 
-                They said it's hard to debug nested stages. This is a pain point, high priority, 
-                related to Query and Aggregation."
-              </Typography>
-            </Paper>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>2. Sign In</Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Enter your @mongodb.com email address" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Check your email for a 6-digit verification code" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Enter the code to complete sign in" />
+                      </ListItem>
+                    </List>
+                    <Alert severity="success" sx={{ mt: 2 }}>
+                      <strong>Test Account:</strong> Use <code>demo@devrelinsights.app</code> with code <code>999999</code> to try the app.
+                    </Alert>
+                  </CardContent>
+                </Card>
+              </Section>
 
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>The AI will automatically extract:</Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-              <Chip size="small" label="Insight type" />
-              <Chip size="small" label="Sentiment" />
-              <Chip size="small" label="Priority" />
-              <Chip size="small" label="Product areas" />
-            </Stack>
+              <Section id="mobile-capture" title="Capturing Insights" icon={<MicIcon sx={{ fontSize: 32 }} />}>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Voice Recording</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      The fastest way to capture insights during conversations:
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><TouchAppIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Tap the microphone button" 
+                          secondary="Hold to record, release to stop"
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="AI transcribes automatically" 
+                          secondary="Edit the text if needed"
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><LocalOfferIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Add tags and categorize" 
+                          secondary="Type, sentiment, priority, product area"
+                        />
+                      </ListItem>
+                    </List>
+                  </CardContent>
+                </Card>
 
-            <Typography color="text.secondary" variant="body2">
-              You can always edit before saving. Review the transcription, adjust tags, and add context.
-            </Typography>
-          </StepCard>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Photo Attachments</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Attach photos of whiteboards, diagrams, or architecture sketches:
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CameraAltIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Tap the camera icon to take a photo" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Or select from your photo library" />
+                      </ListItem>
+                    </List>
+                  </CardContent>
+                </Card>
 
-          {/* Step 4: Add Photos */}
-          <StepCard number={4} title="Attach Photos" icon={<CameraAltIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              Visual context makes insights richer. Snap photos of whiteboards, error messages, or presentation slides.
-            </Typography>
-            <List dense>
-              <ListItem>
-                <ListItemIcon><CameraAltIcon sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                <ListItemText 
-                  primary="Whiteboard sketches" 
-                  secondary="Capture architecture discussions before they're erased"
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CameraAltIcon sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                <ListItemText 
-                  primary="Error messages" 
-                  secondary="Screenshot the exact error a developer shows you"
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CameraAltIcon sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                <ListItemText 
-                  primary="Speaker slides" 
-                  secondary="Key quotes or diagrams from conference talks"
-                />
-              </ListItem>
-            </List>
-          </StepCard>
+                <Card sx={{ bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Offline Mode</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      No internet? No problem. DevRel Insights works fully offline:
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CloudSyncIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Insights are stored locally" 
+                          secondary="Automatically sync when you reconnect"
+                        />
+                      </ListItem>
+                    </List>
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      Look for the sync indicator in the app to see pending uploads.
+                    </Alert>
+                  </CardContent>
+                </Card>
+              </Section>
 
-          {/* Step 5: Link to Events */}
-          <StepCard number={5} title="Link to Events" icon={<EventIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              Context matters. Link your insights to the event or conference where you captured them.
-            </Typography>
-            <List dense>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Select an event from the dropdown when capturing" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Nearby events appear first (uses your location)" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Event context helps leadership understand where feedback comes from" />
-              </ListItem>
-            </List>
-          </StepCard>
+              <Section id="mobile-events" title="Selecting Events" icon={<EventIcon sx={{ fontSize: 32 }} />}>
+                <Card sx={{ bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Link your insights to specific conferences, meetups, or customer visits:
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Tap 'Select Event' before capturing" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Search or browse upcoming events" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="All insights will be tagged with that event" />
+                      </ListItem>
+                    </List>
+                    <Alert severity="success" sx={{ mt: 2 }}>
+                      <strong>Pro tip:</strong> Set your event at the start of the day and capture multiple insights throughout.
+                    </Alert>
+                  </CardContent>
+                </Card>
+              </Section>
+            </Box>
+          )}
 
-          {/* Step 6: Categorize */}
-          <StepCard number={6} title="Tag and Categorize" icon={<LocalOfferIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              Good categorization makes insights actionable. Here's what to set:
-            </Typography>
-            
-            <Stack spacing={2}>
-              <Box>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                  <SentimentSatisfiedIcon sx={{ color: '#00ED64' }} />
-                  <Typography variant="subtitle2">Sentiment</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Positive (praise, success), Neutral (question, info), or Negative (complaint, blocker)
+          {/* Dashboard Guide */}
+          {activeTab === 1 && (
+            <Box>
+              <Section id="dashboard-overview" title="Dashboard Overview" icon={<DashboardIcon sx={{ fontSize: 32 }} />}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  The web dashboard at <Link href="/login" style={{ color: '#00ED64' }}>devrel-insights-admin.vercel.app</Link> provides 
+                  powerful tools for viewing, analyzing, and reporting on captured insights.
                 </Typography>
-              </Box>
-              
-              <Box>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                  <PriorityHighIcon sx={{ color: '#FF6B6B' }} />
-                  <Typography variant="subtitle2">Priority</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Critical (blocking adoption), High (significant pain), Medium (nice to fix), Low (minor)
+
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Key Features</Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><DashboardIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Executive Dashboard" 
+                          secondary="High-level metrics, trends, and AI-generated summaries"
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Insights Feed" 
+                          secondary="Search, filter, and browse all captured insights"
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><EventIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Events Management" 
+                          secondary="Create and manage conferences, meetups, and visits"
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><PersonIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Team Leaderboard" 
+                          secondary="See who's capturing the most valuable insights"
+                        />
+                      </ListItem>
+                    </List>
+                  </CardContent>
+                </Card>
+              </Section>
+
+              <Section id="dashboard-insights" title="Working with Insights" icon={<TipsAndUpdatesIcon sx={{ fontSize: 32 }} />}>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Viewing & Filtering</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Use the Insights page to find and analyze feedback:
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Filter by type: Pain Point, Feature Request, Feedback, etc." />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Filter by sentiment: Positive, Neutral, Negative" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Filter by priority: Critical, High, Medium, Low" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText primary="Search by keyword, tag, event, or advocate" />
+                      </ListItem>
+                    </List>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>AI Analysis</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Get AI-powered insights on your data:
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Per-Insight Analysis" 
+                          secondary="Click any insight and hit 'Analyze' for AI summary and theme extraction"
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Quarterly Summaries" 
+                          secondary="Dashboard shows AI-generated summary of all insights"
+                        />
+                      </ListItem>
+                    </List>
+                  </CardContent>
+                </Card>
+              </Section>
+            </Box>
+          )}
+
+          {/* Roles Guide */}
+          {activeTab === 2 && (
+            <Box>
+              <Section id="roles-overview" title="Role-Based Access" icon={<SecurityIcon sx={{ fontSize: 32 }} />}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  DevRel Insights uses a role-based access control system. New users are automatically 
+                  assigned the <strong>Viewer</strong> role and can be upgraded by administrators.
                 </Typography>
-              </Box>
-              
-              <Box>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                  <LocalOfferIcon sx={{ color: '#4ECDC4' }} />
-                  <Typography variant="subtitle2">Product Areas</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Select all that apply: Atlas, Drivers, Aggregation, Search, Vector, Charts, etc.
+
+                <TableContainer component={Paper} sx={{ mb: 4, bgcolor: 'background.paper' }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Role</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Key Permissions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>
+                          <Chip icon={<VisibilityIcon />} label="Viewer" size="small" />
+                        </TableCell>
+                        <TableCell>Read-only access for stakeholders</TableCell>
+                        <TableCell>View insights, events, analytics, reports</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <Chip icon={<PersonIcon />} label="Advocate" size="small" color="primary" />
+                        </TableCell>
+                        <TableCell>Field advocates who capture insights</TableCell>
+                        <TableCell>+ Create insights, edit own insights, voice capture</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <Chip icon={<SupervisorAccountIcon />} label="Manager" size="small" color="warning" />
+                        </TableCell>
+                        <TableCell>Team leads who oversee advocates</TableCell>
+                        <TableCell>+ Edit all insights, manage events, PMO import</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <Chip icon={<AdminPanelSettingsIcon />} label="Admin" size="small" color="error" />
+                        </TableCell>
+                        <TableCell>System administrators</TableCell>
+                        <TableCell>+ User management, settings, operations</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <Alert severity="info">
+                  <strong>Need elevated access?</strong> Contact your team administrator to upgrade your role.
+                </Alert>
+              </Section>
+
+              <Section id="test-accounts" title="Test Accounts" icon={<CodeIcon sx={{ fontSize: 32 }} />}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  Use these accounts to test different role permissions. All use verification code <code>999999</code>.
                 </Typography>
-              </Box>
+
+                <TableContainer component={Paper} sx={{ bgcolor: 'background.paper' }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Email</TableCell>
+                        <TableCell>Code</TableCell>
+                        <TableCell>Role</TableCell>
+                        <TableCell>Access Level</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell><code>admin@devrelinsights.app</code></TableCell>
+                        <TableCell><code>999999</code></TableCell>
+                        <TableCell><Chip label="Admin" size="small" color="error" /></TableCell>
+                        <TableCell>Full access</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell><code>manager@devrelinsights.app</code></TableCell>
+                        <TableCell><code>999999</code></TableCell>
+                        <TableCell><Chip label="Manager" size="small" color="warning" /></TableCell>
+                        <TableCell>Manage events, import</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell><code>advocate@devrelinsights.app</code></TableCell>
+                        <TableCell><code>999999</code></TableCell>
+                        <TableCell><Chip label="Advocate" size="small" color="primary" /></TableCell>
+                        <TableCell>Create/edit insights</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell><code>viewer@devrelinsights.app</code></TableCell>
+                        <TableCell><code>999999</code></TableCell>
+                        <TableCell><Chip label="Viewer" size="small" /></TableCell>
+                        <TableCell>Read-only</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell><code>demo@devrelinsights.app</code></TableCell>
+                        <TableCell><code>999999</code></TableCell>
+                        <TableCell><Chip label="Advocate" size="small" color="primary" /></TableCell>
+                        <TableCell>Demo account</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Section>
+            </Box>
+          )}
+
+          {/* API Documentation */}
+          {activeTab === 3 && (
+            <Box id="api">
+              <Section id="api-overview" title="API Overview" icon={<ApiIcon sx={{ fontSize: 32 }} />}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  DevRel Insights provides a REST API for building integrations and automating workflows.
+                  All endpoints are available at <code>https://devrel-insights-admin.vercel.app/api</code>.
+                </Typography>
+
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                  <strong>Authentication Required:</strong> Most endpoints require a valid session cookie. 
+                  Use the magic link flow to authenticate, or contact an admin for API access.
+                </Alert>
+              </Section>
+
+              <Section id="api-insights" title="Insights API" icon={<TipsAndUpdatesIcon sx={{ fontSize: 32 }} />}>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>GET /api/insights</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Retrieve all insights with optional filters.
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>Query Parameters:</Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemText primary={<code>type</code>} secondary="Filter by type (Pain Point, Feature Request, etc.)" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemText primary={<code>sentiment</code>} secondary="Filter by sentiment (Positive, Neutral, Negative)" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemText primary={<code>priority</code>} secondary="Filter by priority (Critical, High, Medium, Low)" />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemText primary={<code>eventId</code>} secondary="Filter by event ID" />
+                      </ListItem>
+                    </List>
+                    <CodeBlock title="Example Request">{`curl -X GET "https://devrel-insights-admin.vercel.app/api/insights?type=Pain%20Point&priority=High" \\
+  -H "Cookie: di-session=YOUR_SESSION_TOKEN"`}</CodeBlock>
+                    <CodeBlock title="Example Response">{`{
+  "insights": [
+    {
+      "_id": "65f1a2b3c4d5e6f7a8b9c0d1",
+      "text": "Developers find the aggregation pipeline syntax confusing",
+      "type": "Pain Point",
+      "sentiment": "Negative",
+      "priority": "High",
+      "productAreas": ["Aggregation", "Documentation"],
+      "tags": ["syntax", "learning-curve"],
+      "eventName": "MongoDB World 2026",
+      "advocateName": "Michael Lynn",
+      "capturedAt": "2026-02-08T14:30:00Z"
+    }
+  ],
+  "total": 1
+}`}</CodeBlock>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>POST /api/insights</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Create a new insight. Requires <strong>Advocate</strong> role or higher.
+                    </Typography>
+                    <CodeBlock title="Example Request">{`curl -X POST "https://devrel-insights-admin.vercel.app/api/insights" \\
+  -H "Cookie: di-session=YOUR_SESSION_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "text": "Would love to see better TypeScript support in the Node.js driver",
+    "type": "Feature Request",
+    "sentiment": "Positive",
+    "priority": "Medium",
+    "productAreas": ["Drivers", "Node.js"],
+    "tags": ["typescript", "dx"],
+    "eventId": "65f1a2b3c4d5e6f7a8b9c0d2"
+  }'`}</CodeBlock>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>POST /api/insights/:id/analyze</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Generate AI analysis for an insight. Returns summary, themes, and priority suggestions.
+                    </Typography>
+                    <CodeBlock title="Example Request">{`curl -X POST "https://devrel-insights-admin.vercel.app/api/insights/65f1a2b3c4d5e6f7a8b9c0d1/analyze" \\
+  -H "Cookie: di-session=YOUR_SESSION_TOKEN"`}</CodeBlock>
+                    <CodeBlock title="Example Response">{`{
+  "analysis": {
+    "summary": "Developer requesting improved TypeScript types for better IDE support",
+    "themes": ["Developer Experience", "Type Safety", "Tooling"],
+    "prioritySuggestion": "Medium",
+    "confidence": 0.85,
+    "analyzedAt": "2026-02-08T15:00:00Z"
+  }
+}`}</CodeBlock>
+                  </CardContent>
+                </Card>
+              </Section>
+
+              <Section id="api-events" title="Events API" icon={<EventIcon sx={{ fontSize: 32 }} />}>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>GET /api/events</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Retrieve all events (conferences, meetups, customer visits).
+                    </Typography>
+                    <CodeBlock title="Example Request">{`curl -X GET "https://devrel-insights-admin.vercel.app/api/events" \\
+  -H "Cookie: di-session=YOUR_SESSION_TOKEN"`}</CodeBlock>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>POST /api/events</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Create a new event. Requires <strong>Manager</strong> role or higher.
+                    </Typography>
+                    <CodeBlock title="Example Request">{`curl -X POST "https://devrel-insights-admin.vercel.app/api/events" \\
+  -H "Cookie: di-session=YOUR_SESSION_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "MongoDB World 2026",
+    "type": "Conference",
+    "location": "New York, NY",
+    "startDate": "2026-06-15",
+    "endDate": "2026-06-17"
+  }'`}</CodeBlock>
+                  </CardContent>
+                </Card>
+              </Section>
+
+              <Section id="api-dashboard" title="Dashboard API" icon={<DashboardIcon sx={{ fontSize: 32 }} />}>
+                <Card sx={{ bgcolor: 'background.paper' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>GET /api/dashboard</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Retrieve dashboard metrics and statistics.
+                    </Typography>
+                    <CodeBlock title="Example Response">{`{
+  "totalInsights": 1247,
+  "thisMonth": 89,
+  "byType": {
+    "Pain Point": 423,
+    "Feature Request": 312,
+    "Positive Feedback": 289,
+    "Bug Report": 112,
+    "Use Case": 111
+  },
+  "bySentiment": {
+    "Positive": 456,
+    "Neutral": 534,
+    "Negative": 257
+  },
+  "topAdvocates": [
+    { "name": "Michael Lynn", "count": 234 },
+    { "name": "Jane Doe", "count": 198 }
+  ]
+}`}</CodeBlock>
+                  </CardContent>
+                </Card>
+              </Section>
+            </Box>
+          )}
+
+          {/* FAQ */}
+          {activeTab === 4 && (
+            <Box>
+              <Section id="faq" title="Frequently Asked Questions" icon={<HelpOutlineIcon sx={{ fontSize: 32 }} />}>
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>Who can use DevRel Insights?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      DevRel Insights is currently available to MongoDB Developer Relations team members. 
+                      Sign in with your @mongodb.com email to get started. External collaborators can 
+                      request access through their MongoDB contact.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>Does the mobile app work offline?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      Yes! The mobile app is fully offline-capable. You can capture insights without 
+                      internet connectivity, and they'll automatically sync when you reconnect. Look 
+                      for the sync indicator to see pending uploads.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>How does voice transcription work?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      Voice recordings are processed using AI transcription. Simply tap and hold the 
+                      microphone button, speak your insight, and release. The text is transcribed 
+                      automatically and you can edit it before saving.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>What's the difference between roles?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      <strong>Viewer:</strong> Read-only access to all data and reports.<br />
+                      <strong>Advocate:</strong> Can create and edit their own insights.<br />
+                      <strong>Manager:</strong> Can edit all insights and manage events.<br />
+                      <strong>Admin:</strong> Full access including user management.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>How do I upgrade my role?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      New users start as Viewers. To upgrade to Advocate, Manager, or Admin, 
+                      contact your team administrator. They can change your role in the 
+                      User Management section of the dashboard.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>Can I export my data?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      Yes! Use the API to export insights programmatically, or contact an admin 
+                      for bulk exports. We're working on built-in export features for the dashboard.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography fontWeight={600}>How do I report a bug?</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography color="text.secondary">
+                      Use the bug report button (bottom-right corner of any page in the dashboard) 
+                      or shake your phone in the mobile app to report issues. Include steps to 
+                      reproduce and screenshots if possible.
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+              </Section>
+            </Box>
+          )}
+
+          {/* Quick Links */}
+          <Divider sx={{ my: 6 }} />
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ mb: 3 }}>Ready to get started?</Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AppleIcon />}
+                href="https://testflight.apple.com/join/rAqHXs1Y"
+                target="_blank"
+                sx={{ color: '#001E2B' }}
+              >
+                Get iOS App
+              </Button>
+              <Button
+                component={Link}
+                href="/login"
+                variant="outlined"
+                color="primary"
+                startIcon={<DashboardIcon />}
+              >
+                Open Dashboard
+              </Button>
             </Stack>
-          </StepCard>
-
-          {/* Step 7: Offline Mode */}
-          <StepCard number={7} title="Works Offline" icon={<OfflineBoltIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              No Wi-Fi at the conference venue? No problem. The app works completely offline.
-            </Typography>
-            <List dense>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Insights save locally to your device" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Sync happens automatically when you're back online" />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><CheckCircleIcon sx={{ color: 'primary.main' }} /></ListItemIcon>
-                <ListItemText primary="Check sync status on your Profile tab (green = synced)" />
-              </ListItem>
-            </List>
-            <Alert severity="success" sx={{ mt: 2, bgcolor: 'rgba(0, 237, 100, 0.1)' }}>
-              Voice transcription requires internet, but you can still type insights offline.
-            </Alert>
-          </StepCard>
-
-          {/* Step 8: Light & Dark Mode */}
-          <StepCard number={8} title="Choose Your Theme" icon={<DarkModeIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              The app follows your system preference by default, or set it manually.
-            </Typography>
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <Paper sx={{ p: 2, flex: 1, bgcolor: '#f5f5f5', textAlign: 'center' }}>
-                <LightModeIcon sx={{ color: '#FFC107', fontSize: 32 }} />
-                <Typography variant="body2" sx={{ color: '#333', mt: 1 }}>Light Mode</Typography>
-                <Typography variant="caption" sx={{ color: '#666' }}>Outdoor events</Typography>
-              </Paper>
-              <Paper sx={{ p: 2, flex: 1, bgcolor: '#1a1a2e', textAlign: 'center' }}>
-                <DarkModeIcon sx={{ color: '#9C27B0', fontSize: 32 }} />
-                <Typography variant="body2" sx={{ color: '#fff', mt: 1 }}>Dark Mode</Typography>
-                <Typography variant="caption" sx={{ color: '#aaa' }}>Dim venues</Typography>
-              </Paper>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Change anytime: Profile → Settings → Appearance
-            </Typography>
-          </StepCard>
-
-          {/* Step 9: Engage with Team */}
-          <StepCard number={9} title="Engage with Your Team" icon={<ThumbUpIcon sx={{ color: 'primary.main' }} />}>
-            <Typography color="text.secondary" paragraph>
-              See what other advocates are capturing and react to insights.
-            </Typography>
-            <List dense>
-              <ListItem>
-                <ListItemIcon><ThumbUpIcon sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                <ListItemText 
-                  primary="React to insights" 
-                  secondary="👍 Like, ❤️ Love, 💡 Insightful, 🎉 Celebrate, 🔥 Fire"
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon><LeaderboardIcon sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                <ListItemText 
-                  primary="Check the leaderboard" 
-                  secondary="See top contributors and your impact score"
-                />
-              </ListItem>
-            </List>
-          </StepCard>
-
-          {/* FAQ Section */}
-          <Typography variant="h4" sx={{ mt: 6, mb: 3 }}>
-            <HelpOutlineIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-            Common Questions
-          </Typography>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={500}>What types of insights should I capture?</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography color="text.secondary">
-                <strong>Pain Points:</strong> Frustrations, blockers, complaints<br />
-                <strong>Feature Requests:</strong> "I wish MongoDB could..."<br />
-                <strong>Use Cases:</strong> How developers are using the product<br />
-                <strong>Success Stories:</strong> Wins, praise, testimonials<br />
-                <strong>Competitive Intel:</strong> Comparisons to other databases<br />
-                <strong>Questions:</strong> Common things developers ask
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={500}>How detailed should my insights be?</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography color="text.secondary">
-                Aim for 2-3 sentences minimum. Include context: who said it, what they were trying to do, 
-                and why it matters. The more context, the more actionable the insight.
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={500}>Who sees my insights?</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography color="text.secondary">
-                Your insights are visible to the DevRel team and leadership. They're used to identify 
-                trends, prioritize product improvements, and track developer sentiment over time.
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={500}>Can I edit or delete an insight after submitting?</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography color="text.secondary">
-                Yes! Open the insight from your capture history and tap Edit or Delete. 
-                You can also do this from the admin dashboard.
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={500}>What if I'm not at an event?</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography color="text.secondary">
-                You can capture insights anytime! Customer calls, Slack conversations, 
-                support tickets, community forums — if a developer said something worth noting, 
-                capture it. Just skip the event selection.
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-
-          {/* Final CTA */}
-          <Box
-            sx={{
-              textAlign: 'center',
-              py: 6,
-              mt: 6,
-              borderRadius: 4,
-              bgcolor: 'rgba(0, 237, 100, 0.05)',
-              border: '1px solid rgba(0, 237, 100, 0.2)',
-            }}
-          >
-            <TipsAndUpdatesIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              Ready to start capturing?
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
-              Download the app and capture your first insight. Your field intelligence 
-              directly shapes our product roadmap.
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              color="primary"
-              startIcon={<AppleIcon />}
-              href="https://testflight.apple.com/join/YOUR_CODE"
-              target="_blank"
-              sx={{ color: '#001E2B' }}
-            >
-              Get Started on TestFlight
-            </Button>
           </Box>
         </Container>
 
@@ -539,12 +924,13 @@ export default function QuickStartGuide() {
           sx={{
             py: 4,
             px: 3,
+            mt: 6,
             borderTop: '1px solid rgba(255,255,255,0.1)',
             textAlign: 'center',
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            Questions? Reach out in #devrel-insights on Slack
+            Built with 💚 by the MongoDB Developer Relations team
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
             © 2026 MongoDB, Inc.
