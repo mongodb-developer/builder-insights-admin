@@ -38,6 +38,7 @@ import {
   AdminPanelSettings as AdminIcon,
   Help as HelpIcon,
   Search as SearchIcon,
+  Build as BuildIcon,
 } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 import BugReportFab from './BugReportFab';
@@ -59,6 +60,7 @@ const navItems = [
   { label: 'PMO Import', href: '/import', icon: <ImportIcon /> },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
   { divider: true, adminOnly: true },
+  { label: 'Operations', href: '/operations', icon: <BuildIcon />, adminOnly: true },
   { label: 'User Management', href: '/admin/users', icon: <AdminIcon />, adminOnly: true },
 ];
 

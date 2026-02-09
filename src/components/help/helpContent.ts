@@ -295,6 +295,31 @@ Users sign in with magic links — no passwords to remember or manage.
     relatedTopics: ['advocates'],
   },
 
+  operations: {
+    id: 'operations',
+    title: 'Operations',
+    icon: '🔧',
+    summary: 'Database management and backups',
+    content: `
+The Operations page lets admins manage the database and perform maintenance tasks.
+
+**Available Actions:**
+- **Full Backup** — Download all data as JSON
+- **Export CSV** — Export insights to spreadsheet format
+- **Database Stats** — View collection sizes and document counts
+
+**Why backup?**
+Regular backups protect against accidental deletions and let you restore 
+data if something goes wrong.
+    `,
+    tips: [
+      'Run backups before major imports or changes',
+      'Store backup files in a secure location',
+      'JSON backups can be used for full data restore',
+    ],
+    relatedTopics: ['user-management'],
+  },
+
   dashboard: {
     id: 'dashboard',
     title: 'Dashboard',
@@ -375,6 +400,14 @@ export const pageHelp: Record<string, PageHelpContent> = {
   bugs: {
     title: 'Bug Reports',
     description: 'View bug reports submitted from the mobile app. Triage and track issues here.',
+  },
+  operations: {
+    title: 'Operations',
+    description: 'Database management, backups, and system maintenance. Download backups before making major changes.',
+    quickActions: [
+      { label: 'Download Backup', description: 'Save a full JSON backup' },
+      { label: 'Export CSV', description: 'Export insights for reporting' },
+    ],
   },
 };
 
