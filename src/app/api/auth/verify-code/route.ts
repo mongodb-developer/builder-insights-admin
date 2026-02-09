@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // TESTER ACCOUNTS: For App Store reviewers, beta testers, and role testing
     // Each role has its own test account with code 999999
-    const TESTER_ACCOUNTS: Record<string, { name: string; role: string; isAdmin: boolean }> = {
+    const TESTER_ACCOUNTS: Record<string, { name: string; role: 'admin' | 'manager' | 'advocate' | 'viewer'; isAdmin: boolean }> = {
       'demo@devrelinsights.app': { name: 'Demo User', role: 'advocate', isAdmin: false },
       'admin@devrelinsights.app': { name: 'Admin Tester', role: 'admin', isAdmin: true },
       'manager@devrelinsights.app': { name: 'Manager Tester', role: 'manager', isAdmin: false },
