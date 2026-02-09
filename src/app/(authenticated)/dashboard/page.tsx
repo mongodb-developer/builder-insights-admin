@@ -1121,11 +1121,14 @@ export default function DashboardPage() {
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Sentiment Distribution</Typography>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
-                        <Pie data={data.charts.sentiment} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
-                          label={({ name, percent }: any) => `${name || ''} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={false}>
+                        <Pie data={data.charts.sentiment} cx="50%" cy="45%" innerRadius={50} outerRadius={85} paddingAngle={3} dataKey="value">
                           {data.charts.sentiment.map((entry, idx) => <Cell key={idx} fill={SENTIMENT_COLORS[entry.name] || CHART_COLORS[idx]} />)}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip formatter={(value) => {
+                          const total = data.charts.sentiment.reduce((a, b) => a + b.value, 0);
+                          return `${value} (${total > 0 ? (((value as number) / total) * 100).toFixed(0) : 0}%)`;
+                        }} />
+                        <Legend verticalAlign="bottom" height={36} formatter={(value: string) => <span style={{ color: theme.palette.text.primary }}>{value}</span>} />
                       </PieChart>
                     </ResponsiveContainer>
                   </CardContent>
