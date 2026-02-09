@@ -221,7 +221,7 @@ export default function EventsPage() {
           <Button variant="outlined" onClick={() => router.push('/import')}>
             Import PMO
           </Button>
-          <Button variant="contained" startIcon={<Add />}>
+          <Button variant="contained" startIcon={<Add />} onClick={() => router.push('/events/new')}>
             New Event
           </Button>
         </Stack>
