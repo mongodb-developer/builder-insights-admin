@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
+// CORS headers for cross-origin requests (mobile web app)
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+};
+
 const COOKIE_NAME = 'di-session';
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'devrel-insights-secret-change-me'
@@ -69,6 +76,20 @@ interface TokenPayload {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Handle CORS preflight requests
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  // Add CORS headers to all API responses
+  const addCorsHeaders = (response: NextResponse) => {
+    Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
+  };
+
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   // Allow static files (images, etc.)
@@ -89,6 +110,10 @@ export async function middleware(request: NextRequest) {
   // Allow public paths
   // Exact match for root, startsWith for other paths
   if (pathname === '/' || PUBLIC_PATHS.some((p) => p !== '/' && pathname.startsWith(p))) {
+    // Add CORS headers for API routes
+    if (pathname.startsWith('/api/')) {
+      return addCorsHeaders(NextResponse.next());
+    }
     return NextResponse.next();
   }
 
