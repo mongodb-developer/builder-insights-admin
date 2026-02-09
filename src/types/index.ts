@@ -222,6 +222,26 @@ export interface Insight {
   createdAt: string;
   updatedAt: string;
   synced: boolean;
+  
+  // AI Analysis (optional, populated by /api/insights/[id]/analyze)
+  aiAnalysis?: InsightAIAnalysis;
+}
+
+// ============================================================================
+// AI ANALYSIS
+// ============================================================================
+
+export interface InsightAIAnalysis {
+  summary: string;              // Concise 1-2 sentence summary
+  interpretation: string;       // What this insight really means
+  suggestedActions: string[];   // Recommended next steps
+  themes: string[];             // Extracted themes/topics
+  prioritySuggestion: Priority; // AI-recommended priority
+  sentimentReason: string;      // Why this sentiment was detected
+  relatedProductAreas: string[]; // Additional product areas mentioned
+  confidence: number;           // 0-1 confidence score
+  analyzedAt: string;           // ISO timestamp
+  model: string;                // Which model was used
 }
 
 // ============================================================================
