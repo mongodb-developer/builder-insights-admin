@@ -29,28 +29,36 @@ export async function POST(request: NextRequest) {
 
     const db = await getDb();
 
-    // TESTER ACCOUNT: For App Store reviewers and beta testers
-    const TESTER_EMAIL = 'demo@devrelinsights.app';
+    // TESTER ACCOUNTS: For App Store reviewers, beta testers, and role testing
+    // Each role has its own test account with code 999999
+    const TESTER_ACCOUNTS: Record<string, { name: string; role: string; isAdmin: boolean }> = {
+      'demo@devrelinsights.app': { name: 'Demo User', role: 'advocate', isAdmin: false },
+      'admin@devrelinsights.app': { name: 'Admin Tester', role: 'admin', isAdmin: true },
+      'manager@devrelinsights.app': { name: 'Manager Tester', role: 'manager', isAdmin: false },
+      'advocate@devrelinsights.app': { name: 'Advocate Tester', role: 'advocate', isAdmin: false },
+      'viewer@devrelinsights.app': { name: 'Viewer Tester', role: 'viewer', isAdmin: false },
+    };
     const TESTER_CODE = '999999';
     
-    if (normalizedEmail === TESTER_EMAIL && normalizedCode === TESTER_CODE) {
+    const testerAccount = TESTER_ACCOUNTS[normalizedEmail];
+    if (testerAccount && normalizedCode === TESTER_CODE) {
       const jwt = await createToken({
-        email: TESTER_EMAIL,
-        name: 'Demo User',
-        role: 'advocate',
-        isAdmin: false,
-        advocateId: 'demo_user',
+        email: normalizedEmail,
+        name: testerAccount.name,
+        role: testerAccount.role,
+        isAdmin: testerAccount.isAdmin,
+        advocateId: `tester_${testerAccount.role}`,
       });
 
-      const demoAdvocate = {
-        _id: 'demo_user',
-        email: TESTER_EMAIL,
-        name: 'Demo User',
-        role: 'advocate',
+      const testerAdvocate = {
+        _id: `tester_${testerAccount.role}`,
+        email: normalizedEmail,
+        name: testerAccount.name,
+        role: testerAccount.role,
       };
 
       if (isMobile) {
-        return NextResponse.json({ advocate: demoAdvocate, token: jwt });
+        return NextResponse.json({ advocate: testerAdvocate, token: jwt });
       }
 
       const response = NextResponse.json({ success: true });

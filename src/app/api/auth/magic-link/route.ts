@@ -17,9 +17,16 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
     
-    // TESTER BYPASS: Allow demo account without sending email
-    const TESTER_EMAIL = 'demo@devrelinsights.app';
-    if (normalizedEmail === TESTER_EMAIL) {
+    // TESTER BYPASS: Allow test accounts without sending email
+    // All test accounts use code 999999
+    const TESTER_EMAILS = [
+      'demo@devrelinsights.app',      // advocate
+      'admin@devrelinsights.app',     // admin
+      'manager@devrelinsights.app',   // manager
+      'advocate@devrelinsights.app',  // advocate
+      'viewer@devrelinsights.app',    // viewer (read-only)
+    ];
+    if (TESTER_EMAILS.includes(normalizedEmail)) {
       // Return success - user will enter code 999999 which is handled in verify-code
       return NextResponse.json({ sent: true });
     }
