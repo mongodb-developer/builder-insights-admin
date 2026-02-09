@@ -47,8 +47,10 @@ import {
   Event as EventIcon,
   Person,
   CalendarToday,
+  AutoAwesome as AIIcon,
 } from '@mui/icons-material';
 import InsightFormDialog, { InsightFormData } from '@/components/InsightFormDialog';
+import InsightDetailDrawer from '@/components/InsightDetailDrawer';
 import { PageHelp, HelpButton, useHelp } from '@/components/help';
 
 interface ReactionCounts {
@@ -67,6 +69,14 @@ const REACTION_EMOJI: Record<string, string> = {
   fire: '🔥',
 };
 
+interface AIAnalysis {
+  summary?: string;
+  themes?: string[];
+  prioritySuggestion?: string;
+  confidence?: number;
+  analyzedAt?: string;
+}
+
 interface Insight {
   _id: string;
   type: string;
@@ -83,6 +93,7 @@ interface Insight {
   capturedAt: string;
   reactionCounts?: ReactionCounts;
   reactionTotal?: number;
+  aiAnalysis?: AIAnalysis;
 }
 
 interface Event {
@@ -149,6 +160,10 @@ export default function InsightsPage() {
     message: '',
     severity: 'success',
   });
+  
+  // Detail drawer state
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [selectedInsight, setSelectedInsight] = useState<any | null>(null);
 
   // View and pagination state
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -255,6 +270,11 @@ export default function InsightsPage() {
       followUpRequired: insight.followUpRequired || false,
     });
     setDialogOpen(true);
+  };
+
+  const handleViewDetail = (insight: Insight) => {
+    setSelectedInsight(insight);
+    setDetailDrawerOpen(true);
   };
 
   const handleDelete = async (insight: Insight) => {
@@ -444,6 +464,7 @@ export default function InsightsPage() {
                 <TableRow>
                   <TableCell width={40}></TableCell>
                   <TableCell>Insight</TableCell>
+                  <TableCell>AI Summary</TableCell>
                   <TableCell>Type</TableCell>
                   <TableCell>Priority</TableCell>
                   <TableCell>Event</TableCell>
@@ -459,15 +480,15 @@ export default function InsightsPage() {
                     key={insight._id}
                     hover
                     sx={{ cursor: 'pointer' }}
-                    onClick={() => handleEdit(insight)}
+                    onClick={() => handleViewDetail(insight)}
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {getSentimentIcon(insight.sentiment)}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 400 }}>
-                        {insight.text.length > 150
-                          ? `${insight.text.substring(0, 150)}...`
+                      <Typography variant="body2" sx={{ maxWidth: 350 }}>
+                        {insight.text.length > 120
+                          ? `${insight.text.substring(0, 120)}...`
                           : insight.text}
                       </Typography>
                       {insight.tags.length > 0 && (
@@ -479,6 +500,55 @@ export default function InsightsPage() {
                             <Chip label={`+${insight.tags.length - 3}`} size="small" />
                           )}
                         </Stack>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 200 }}>
+                      {insight.aiAnalysis?.summary ? (
+                        <Tooltip
+                          title={
+                            <Box sx={{ p: 0.5 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                AI Summary
+                              </Typography>
+                              <Typography variant="body2">
+                                {insight.aiAnalysis.summary}
+                              </Typography>
+                              {insight.aiAnalysis.themes && insight.aiAnalysis.themes.length > 0 && (
+                                <Box sx={{ mt: 1 }}>
+                                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                                    Themes: {insight.aiAnalysis.themes.join(', ')}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          }
+                          arrow
+                          placement="top"
+                        >
+                          <Stack direction="row" spacing={0.5} alignItems="flex-start" sx={{ cursor: 'help' }}>
+                            <AIIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.25 }} />
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: 'text.secondary',
+                                fontSize: '0.8rem',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                            >
+                              {insight.aiAnalysis.summary.length > 60
+                                ? `${insight.aiAnalysis.summary.substring(0, 60)}...`
+                                : insight.aiAnalysis.summary}
+                            </Typography>
+                          </Stack>
+                        </Tooltip>
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">
+                          —
+                        </Typography>
                       )}
                     </TableCell>
                     <TableCell>
@@ -558,10 +628,10 @@ export default function InsightsPage() {
                       boxShadow: 4,
                     },
                   }}
-                  onClick={() => handleEdit(insight)}
+                  onClick={() => handleViewDetail(insight)}
                 >
                   <CardContent sx={{ flex: 1 }}>
-                    {/* Header: Sentiment + Type + Priority + Reactions */}
+                    {/* Header: Sentiment + Type + Priority + AI + Reactions */}
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
                       {getSentimentIcon(insight.sentiment)}
                       <Chip label={insight.type} size="small" />
@@ -570,6 +640,20 @@ export default function InsightsPage() {
                         size="small"
                         color={priorityColors[insight.priority] || 'default'}
                       />
+                      {insight.aiAnalysis?.summary && (
+                        <Tooltip title={insight.aiAnalysis.summary}>
+                          <Chip
+                            icon={<AIIcon sx={{ fontSize: 14 }} />}
+                            label="AI"
+                            size="small"
+                            sx={{
+                              bgcolor: 'primary.main',
+                              color: 'primary.contrastText',
+                              '& .MuiChip-icon': { color: 'inherit' },
+                            }}
+                          />
+                        </Tooltip>
+                      )}
                       <Box sx={{ flex: 1 }} />
                       <ReactionDisplay counts={insight.reactionCounts} total={insight.reactionTotal} />
                     </Stack>
@@ -663,6 +747,20 @@ export default function InsightsPage() {
         onSave={handleSave}
         insight={editingInsight}
         events={events}
+      />
+
+      {/* Detail Drawer with AI Analysis */}
+      <InsightDetailDrawer
+        insight={selectedInsight}
+        open={detailDrawerOpen}
+        onClose={() => {
+          setDetailDrawerOpen(false);
+          setSelectedInsight(null);
+        }}
+        onEdit={(insight) => {
+          setDetailDrawerOpen(false);
+          handleEdit(insight);
+        }}
       />
 
       {/* Snackbar */}
