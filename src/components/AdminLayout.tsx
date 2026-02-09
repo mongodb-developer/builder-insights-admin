@@ -57,15 +57,30 @@ const navItems = [
   { label: 'World Map', href: '/world', icon: <PublicIcon /> },
   { divider: true },
   { label: 'Bug Reports', href: '/bugs', icon: <BugReportIcon /> },
-  { label: 'PMO Import', href: '/import', icon: <ImportIcon /> },
+  { label: 'PMO Import', href: '/import', icon: <ImportIcon />, minRole: 'manager' },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
   { divider: true, adminOnly: true },
   { label: 'Operations', href: '/operations', icon: <BuildIcon />, adminOnly: true },
   { label: 'User Management', href: '/admin/users', icon: <AdminIcon />, adminOnly: true },
 ];
 
+// Role hierarchy for nav filtering
+const ROLE_LEVELS: Record<string, number> = {
+  admin: 100,
+  manager: 75,
+  advocate: 50,
+  viewer: 25,
+};
+
 interface Props {
   children: React.ReactNode;
+}
+
+interface UserInfo {
+  email: string;
+  name: string;
+  role: string;
+  isAdmin: boolean;
 }
 
 // Inner layout component that can use useHelp
@@ -73,22 +88,39 @@ function AdminLayoutInner({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = loading
+  const [user, setUser] = useState<UserInfo | null>(null);
   const { openHelp } = useHelp();
 
-  // Check if user is admin
+  // Check user info
   useEffect(() => {
     fetch('/api/auth/me')
       .then(res => res.ok ? res.json() : Promise.reject('Not authenticated'))
-      .then(data => setIsAdmin(data.isAdmin === true || data.role === 'admin'))
-      .catch(() => setIsAdmin(false));
+      .then(data => setUser({
+        email: data.email,
+        name: data.name,
+        role: data.role || 'viewer',
+        isAdmin: data.isAdmin === true || data.role === 'admin',
+      }))
+      .catch(() => setUser(null));
   }, []);
 
-  // Filter nav items based on admin status (show all while loading)
+  const isAdmin = user?.isAdmin ?? false;
+  const userRoleLevel = ROLE_LEVELS[user?.role || 'viewer'] || 25;
+
+  // Filter nav items based on user role
   const visibleNavItems = navItems.filter(item => {
-    if (!('adminOnly' in item) || !item.adminOnly) return true;
-    if (isAdmin === null) return true; // Show while loading
-    return isAdmin;
+    // Admin-only items
+    if ('adminOnly' in item && item.adminOnly) {
+      if (user === null) return true; // Show while loading
+      return isAdmin;
+    }
+    // Items with minimum role requirement
+    if ('minRole' in item && item.minRole) {
+      if (user === null) return true; // Show while loading
+      const requiredLevel = ROLE_LEVELS[item.minRole as string] || 0;
+      return userRoleLevel >= requiredLevel;
+    }
+    return true;
   });
 
   const handleDrawerToggle = () => {
@@ -141,7 +173,12 @@ function AdminLayoutInner({ children }: Props) {
                 <HelpIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Chip label="Admin" size="small" sx={{ height: 20, fontSize: 11 }} />
+            <Chip 
+              label={user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Loading...'} 
+              size="small" 
+              color={isAdmin ? 'error' : user?.role === 'viewer' ? 'default' : 'primary'}
+              sx={{ height: 20, fontSize: 11 }} 
+            />
           </Box>
         </Box>
       </Box>

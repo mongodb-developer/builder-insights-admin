@@ -140,6 +140,14 @@ function ReactionDisplay({ counts, total }: { counts?: ReactionCounts; total?: n
   );
 }
 
+// Role hierarchy for permission checks
+const ROLE_LEVELS: Record<string, number> = {
+  admin: 100,
+  manager: 75,
+  advocate: 50,
+  viewer: 25,
+};
+
 export default function InsightsPage() {
   const { openHelp } = useHelp();
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -151,6 +159,18 @@ export default function InsightsPage() {
     priority: '',
     search: '',
   });
+
+  // User role state
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const canModify = userRole ? (ROLE_LEVELS[userRole] || 0) >= ROLE_LEVELS.advocate : false;
+
+  // Fetch user role on mount
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : Promise.reject('Not authenticated'))
+      .then(data => setUserRole(data.role || 'viewer'))
+      .catch(() => setUserRole('viewer'));
+  }, []);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -363,13 +383,15 @@ export default function InsightsPage() {
               <Tooltip title="Card View"><ViewModule /></Tooltip>
             </ToggleButton>
           </ToggleButtonGroup>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={handleAddNew}
-          >
-            Add Insight
-          </Button>
+          {canModify && (
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleAddNew}
+            >
+              Add Insight
+            </Button>
+          )}
         </Stack>
       </Box>
 
@@ -450,9 +472,11 @@ export default function InsightsPage() {
             <Typography color="text.secondary" sx={{ mb: 2 }}>
               Add insights manually or capture them from the mobile app.
             </Typography>
-            <Button variant="outlined" startIcon={<Add />} onClick={handleAddNew}>
-              Add First Insight
-            </Button>
+            {canModify && (
+              <Button variant="outlined" startIcon={<Add />} onClick={handleAddNew}>
+                Add First Insight
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : viewMode === 'table' ? (
@@ -578,22 +602,28 @@ export default function InsightsPage() {
                       <ReactionDisplay counts={insight.reactionCounts} total={insight.reactionTotal} />
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Stack direction="row" spacing={0}>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => handleEdit(insight)}>
-                            <Edit fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDelete(insight)}
-                            color="error"
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                      {canModify ? (
+                        <Stack direction="row" spacing={0}>
+                          <Tooltip title="Edit">
+                            <IconButton size="small" onClick={() => handleEdit(insight)}>
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(insight)}
+                              color="error"
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          View only
+                        </Typography>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -710,18 +740,20 @@ export default function InsightsPage() {
                     </Stack>
                   </CardContent>
 
-                  <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }} onClick={(e) => e.stopPropagation()}>
-                    <Tooltip title="Edit">
-                      <IconButton size="small" onClick={() => handleEdit(insight)}>
-                        <Edit fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" onClick={() => handleDelete(insight)} color="error">
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </CardActions>
+                  {canModify && (
+                    <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }} onClick={(e) => e.stopPropagation()}>
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => handleEdit(insight)}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => handleDelete(insight)} color="error">
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </CardActions>
+                  )}
                 </Card>
               </Grid>
             ))}
@@ -757,10 +789,10 @@ export default function InsightsPage() {
           setDetailDrawerOpen(false);
           setSelectedInsight(null);
         }}
-        onEdit={(insight) => {
+        onEdit={canModify ? (insight) => {
           setDetailDrawerOpen(false);
           handleEdit(insight);
-        }}
+        } : undefined}
       />
 
       {/* Snackbar */}

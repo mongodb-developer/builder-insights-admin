@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const db = await getDb();
 
     // Check advocates first (primary users), then users collection
-    const advocate = await db.collection('advocates').findOne({
+    let advocate = await db.collection('advocates').findOne({
       email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
     });
 
@@ -44,10 +44,24 @@ export async function POST(request: NextRequest) {
       ? await db.collection('users').findOne({ email: normalizedEmail })
       : null;
 
-    // Always return success (don't reveal if email exists)
+    // Auto-provision new @mongodb.com users as viewers
     if (!advocate && !user) {
-      console.log('[Auth] Email not found:', normalizedEmail);
-      return NextResponse.json({ sent: true });
+      console.log('[Auth] Auto-provisioning new viewer:', normalizedEmail);
+      const now = new Date().toISOString();
+      const result = await db.collection('advocates').insertOne({
+        email: normalizedEmail,
+        name: normalizedEmail.split('@')[0].split('.').map((s: string) => 
+          s.charAt(0).toUpperCase() + s.slice(1)
+        ).join(' '),
+        role: 'viewer',
+        isAdmin: false,
+        isActive: true,
+        autoProvisioned: true,  // Flag to identify auto-created accounts
+        createdAt: now,
+        updatedAt: now,
+      });
+      // Fetch the newly created advocate
+      advocate = await db.collection('advocates').findOne({ _id: result.insertedId });
     }
 
     // Generate a 6-digit verification code

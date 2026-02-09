@@ -60,6 +60,20 @@ export function isAdmin(role: Role | string | undefined): boolean {
 }
 
 /**
+ * Check if user is viewer only (read-only access)
+ */
+export function isViewerOnly(role: Role | string | undefined): boolean {
+  return role === ROLES.VIEWER;
+}
+
+/**
+ * Check if user can make modifications (advocate or above)
+ */
+export function canModify(role: Role | string | undefined): boolean {
+  return hasRole(role, ROLES.ADVOCATE);
+}
+
+/**
  * Check if user is at least a manager
  */
 export function isManagerOrAbove(role: Role | string | undefined): boolean {

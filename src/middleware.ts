@@ -27,7 +27,38 @@ const PUBLIC_PATHS = [
 const ADMIN_PATHS = [
   '/admin',
   '/api/admin',
+  '/operations',
+  '/api/operations',
 ];
+
+// Paths that require at least 'advocate' role for mutations (POST, PUT, PATCH, DELETE)
+// Viewers can only GET these endpoints
+const MUTATION_PROTECTED_PATHS = [
+  '/api/insights',
+  '/api/events',
+  '/api/sessions',
+];
+
+// Paths that require at least 'manager' role
+const MANAGER_PATHS = [
+  '/import',
+  '/api/events/upsert',
+];
+
+// Role hierarchy for comparison
+const ROLE_HIERARCHY: Record<string, number> = {
+  admin: 100,
+  manager: 75,
+  advocate: 50,
+  viewer: 25,
+};
+
+function hasRole(userRole: string | undefined, requiredRole: string): boolean {
+  if (!userRole) return false;
+  const userLevel = ROLE_HIERARCHY[userRole] ?? 0;
+  const requiredLevel = ROLE_HIERARCHY[requiredRole] ?? 0;
+  return userLevel >= requiredLevel;
+}
 
 interface TokenPayload {
   email: string;
@@ -84,6 +115,35 @@ export async function middleware(request: NextRequest) {
         }
         const dashboardUrl = new URL('/dashboard', request.url);
         return NextResponse.redirect(dashboardUrl);
+      }
+    }
+
+    // Check manager paths
+    const isManagerPath = MANAGER_PATHS.some((p) => pathname.startsWith(p));
+    if (isManagerPath) {
+      if (!hasRole(user.role, 'manager')) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'Manager access required' },
+            { status: 403 }
+          );
+        }
+        const dashboardUrl = new URL('/dashboard', request.url);
+        return NextResponse.redirect(dashboardUrl);
+      }
+    }
+
+    // Check mutation-protected paths (viewers can only GET)
+    const method = request.method;
+    const isMutationMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const isMutationProtectedPath = MUTATION_PROTECTED_PATHS.some((p) => pathname.startsWith(p));
+    
+    if (isMutationMethod && isMutationProtectedPath) {
+      if (!hasRole(user.role, 'advocate')) {
+        return NextResponse.json(
+          { error: 'You have view-only access. Contact an administrator to request edit permissions.' },
+          { status: 403 }
+        );
       }
     }
 

@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { getDb } from './mongodb';
-import { Role, ROLES, isAdmin as checkIsAdmin, getPermissions, RolePermissions } from './roles';
+import { Role, ROLES, isAdmin as checkIsAdmin, isViewerOnly, canModify, getPermissions, RolePermissions } from './roles';
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'devrel-insights-secret-change-me'
@@ -197,5 +197,5 @@ export async function ensureAdminExists(): Promise<boolean> {
   return false;
 }
 
-export { SECRET, ROLES, getPermissions };
+export { SECRET, ROLES, getPermissions, isViewerOnly, canModify };
 export type { Role, RolePermissions };
