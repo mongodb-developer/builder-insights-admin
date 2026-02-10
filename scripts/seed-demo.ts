@@ -64,7 +64,8 @@ const events = [
     eventType: 'DEV_DAY_REGIONAL' as const, language: 'English', dasNeeded: 4,
     account: { name: 'MongoDB Inc.', segment: 'ALL' as const, region: 'AMER' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q4 FY26',
-    coordinates: { lat: 40.7128, lng: -74.006 },
+    geo: { type: 'Point' as const, coordinates: [-74.006, 40.7128] }, // [lng, lat]
+    geoCity: 'New York', geoCountry: 'United States',
   },
   {
     _id: 'evt_002', name: 'AWS re:Invent 2025', location: 'Las Vegas, NV', isVirtual: false,
@@ -72,7 +73,8 @@ const events = [
     eventType: 'OTHER' as const, language: 'English', dasNeeded: 6,
     account: { name: 'Amazon Web Services', segment: 'ANCHOR' as const, region: 'AMER' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q4 FY26',
-    coordinates: { lat: 36.1699, lng: -115.1398 },
+    geo: { type: 'Point' as const, coordinates: [-115.1398, 36.1699] },
+    geoCity: 'Las Vegas', geoCountry: 'United States',
   },
   {
     _id: 'evt_003', name: 'KubeCon NA', location: 'Chicago, IL', isVirtual: false,
@@ -80,7 +82,8 @@ const events = [
     eventType: 'OTHER' as const, language: 'English', dasNeeded: 3,
     account: { name: 'CNCF', segment: 'ALL' as const, region: 'AMER' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q4 FY26',
-    coordinates: { lat: 41.8781, lng: -87.6298 },
+    geo: { type: 'Point' as const, coordinates: [-87.6298, 41.8781] },
+    geoCity: 'Chicago', geoCountry: 'United States',
   },
   {
     _id: 'evt_004', name: 'MongoDB.local London', location: 'London, UK', isVirtual: false,
@@ -88,7 +91,8 @@ const events = [
     eventType: 'DEV_DAY_REGIONAL' as const, language: 'English', dasNeeded: 3,
     account: { name: 'MongoDB Inc.', segment: 'ALL' as const, region: 'EMEA' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 51.5074, lng: -0.1278 },
+    geo: { type: 'Point' as const, coordinates: [-0.1278, 51.5074] },
+    geoCity: 'London', geoCountry: 'United Kingdom',
   },
   {
     _id: 'evt_005', name: 'PyCon US', location: 'Pittsburgh, PA', isVirtual: false,
@@ -96,7 +100,8 @@ const events = [
     eventType: 'OTHER' as const, language: 'English', dasNeeded: 2,
     account: { name: 'Python Software Foundation', segment: 'ALL' as const, region: 'AMER' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 40.4406, lng: -79.9959 },
+    geo: { type: 'Point' as const, coordinates: [-79.9959, 40.4406] },
+    geoCity: 'Pittsburgh', geoCountry: 'United States',
   },
   {
     _id: 'evt_006', name: 'Developer Week SF', location: 'San Francisco, CA', isVirtual: false,
@@ -104,7 +109,8 @@ const events = [
     eventType: 'OTHER' as const, language: 'English', dasNeeded: 4,
     account: { name: 'DeveloperWeek', segment: 'ALL' as const, region: 'AMER' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 37.7749, lng: -122.4194 },
+    geo: { type: 'Point' as const, coordinates: [-122.4194, 37.7749] },
+    geoCity: 'San Francisco', geoCountry: 'United States',
   },
   // RECENT — just happened (lots of fresh insights)
   {
@@ -113,7 +119,8 @@ const events = [
     eventType: 'BUILD_LEARN' as const, language: 'English', dasNeeded: 2,
     account: { name: 'MongoDB Inc.', segment: 'ALL' as const, region: 'AMER' as const },
     travelStatus: 'NOT_NEEDED' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 30.2672, lng: -97.7431 },
+    geo: { type: 'Point' as const, coordinates: [-97.7431, 30.2672] },
+    geoCity: 'Austin', geoCountry: 'United States',
   },
   // UPCOMING — gives the app a forward-looking feel
   {
@@ -122,7 +129,8 @@ const events = [
     eventType: 'OTHER' as const, language: 'English', dasNeeded: 2,
     account: { name: 'NodeConf', segment: 'ALL' as const, region: 'EMEA' as const },
     travelStatus: 'READY_TO_BOOK' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 53.3498, lng: -6.2603 },
+    geo: { type: 'Point' as const, coordinates: [-6.2603, 53.3498] },
+    geoCity: 'Dublin', geoCountry: 'Ireland',
   },
   {
     _id: 'evt_009', name: 'MongoDB World 2026', location: 'New York, NY', isVirtual: false,
@@ -130,7 +138,8 @@ const events = [
     eventType: 'DEV_DAY_REGIONAL' as const, language: 'English', dasNeeded: 10,
     account: { name: 'MongoDB Inc.', segment: 'ALL' as const, region: 'AMER' as const },
     travelStatus: 'DONT_BOOK_YET' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 40.7128, lng: -74.006 },
+    geo: { type: 'Point' as const, coordinates: [-74.006, 40.7128] },
+    geoCity: 'New York', geoCountry: 'United States',
   },
   {
     _id: 'evt_010', name: 'MongoDB.local Singapore', location: 'Singapore', isVirtual: false,
@@ -138,9 +147,10 @@ const events = [
     eventType: 'DEV_DAY_REGIONAL' as const, language: 'English', dasNeeded: 3,
     account: { name: 'MongoDB Inc.', segment: 'ALL' as const, region: 'APAC' as const },
     travelStatus: 'DONT_BOOK_YET' as const, insightCount: 0, quarter: 'Q1 FY27',
-    coordinates: { lat: 1.3521, lng: 103.8198 },
+    geo: { type: 'Point' as const, coordinates: [103.8198, 1.3521] },
+    geoCity: 'Singapore', geoCountry: 'Singapore',
   },
-  // VIRTUAL events
+  // VIRTUAL events (no geo data)
   {
     _id: 'evt_011', name: 'Atlas Vector Search Deep Dive', location: 'Virtual', isVirtual: true,
     startDate: daysAgo(14), endDate: daysAgo(14), status: 'COMPLETED' as const,
@@ -535,15 +545,13 @@ async function seed() {
     const evtCol = db.collection('events');
     let evtCount = 0;
     for (const e of events) {
-      const { coordinates, ...eventDoc } = e;
       const doc = {
-        ...eventDoc,
+        ...e,
         isRegional: e.eventType.includes('REGIONAL') || e.eventType.includes('DEV_DAY'),
         assignments: generateAssignments(e),
         notes: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        ...(coordinates ? { coordinates } : {}),
       };
       if (!isDryRun) {
         await evtCol.updateOne({ _id: e._id }, { $set: doc }, { upsert: true });

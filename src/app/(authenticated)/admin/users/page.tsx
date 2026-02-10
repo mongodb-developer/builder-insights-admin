@@ -53,6 +53,7 @@ interface User {
   name: string;
   role: string;
   roleLabel: string;
+  jobTitle: string | null;
   region: string;
   isActive: boolean;
   isAdmin: boolean;
@@ -120,13 +121,19 @@ function UserCard({ user, onEdit, onDelete, roleColors }: {
         <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
           {user.name}
         </Typography>
-        <Chip
-          label={user.roleLabel}
-          size="small"
-          color={roleColors[user.role] || 'default'}
-          variant="outlined"
-          sx={{ mb: 1.5 }}
-        />
+        <Box sx={{ mb: 1.5 }}>
+          <Chip
+            label={user.roleLabel}
+            size="small"
+            color={roleColors[user.role] || 'default'}
+            variant="outlined"
+          />
+          {user.jobTitle && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              {user.jobTitle}
+            </Typography>
+          )}
+        </Box>
 
         {/* Email */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2, wordBreak: 'break-word' }}>
@@ -194,6 +201,7 @@ export default function AdminUsersPage() {
     name: '',
     email: '',
     role: 'advocate',
+    jobTitle: '',
     region: '',
     isActive: true,
   });
@@ -228,6 +236,7 @@ export default function AdminUsersPage() {
         name: user.name,
         email: user.email,
         role: user.role,
+        jobTitle: user.jobTitle || '',
         region: user.region || '',
         isActive: user.isActive,
       });
@@ -237,6 +246,7 @@ export default function AdminUsersPage() {
         name: '',
         email: '',
         role: 'advocate',
+        jobTitle: '',
         region: '',
         isActive: true,
       });
@@ -417,12 +427,19 @@ export default function AdminUsersPage() {
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    label={user.roleLabel}
-                    size="small"
-                    color={ROLE_COLORS[user.role] || 'default'}
-                    variant="outlined"
-                  />
+                  <Box>
+                    <Chip
+                      label={user.roleLabel}
+                      size="small"
+                      color={ROLE_COLORS[user.role] || 'default'}
+                      variant="outlined"
+                    />
+                    {user.jobTitle && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                        {user.jobTitle}
+                      </Typography>
+                    )}
+                  </Box>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
@@ -516,6 +533,13 @@ export default function AdminUsersPage() {
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              label="Job Title"
+              value={formData.jobTitle}
+              onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+              fullWidth
+              placeholder="e.g., Senior DA, Staff DA, Principal DA"
+            />
             <TextField
               label="Region"
               value={formData.region}

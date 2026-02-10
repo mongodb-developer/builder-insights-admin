@@ -108,6 +108,7 @@ export async function PUT(
       updates.role = body.role;
       updates.isAdmin = body.role === ROLES.ADMIN;
     }
+    if (body.jobTitle !== undefined) updates.jobTitle = body.jobTitle || null;
     if (body.region !== undefined) updates.region = body.region;
     if (body.isActive !== undefined) updates.isActive = body.isActive;
     if (body.avatarUrl !== undefined) updates.avatarUrl = body.avatarUrl;
