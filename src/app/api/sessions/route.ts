@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     await eventsCol.updateOne(
       { _id: body.eventId },
       { 
-        $push: { sessions: session },
+        $push: { sessions: session } as any,
         $set: { updatedAt: now }
       }
     );

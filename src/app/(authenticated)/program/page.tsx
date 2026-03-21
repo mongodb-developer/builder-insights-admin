@@ -298,16 +298,16 @@ export default function ProgramPage() {
     return assignees.sort();
   }, [draft]);
 
+  const [checklistAssigneeFilter, setChecklistAssigneeFilter] = useState('all');
+  const [checklistStatusFilter, setChecklistStatusFilter] = useState('all');
+  const [savedView, setSavedView] = useState('all');
+
   const savedViewDescription = useMemo(() => {
     if (savedView === 'launch_blockers') return 'Blocked tasks, blocked checklist items, and at-risk workstreams.';
     if (savedView === 'overdue_work') return 'Checklist items and tasks that are late and still open.';
     if (savedView === 'needs_decision') return 'Pending decisions plus the work that may slip waiting on them.';
     return 'Full program view across all rollout work.';
   }, [savedView]);
-
-  const [checklistAssigneeFilter, setChecklistAssigneeFilter] = useState('all');
-  const [checklistStatusFilter, setChecklistStatusFilter] = useState('all');
-  const [savedView, setSavedView] = useState('all');
 
   const recentActivity = useMemo(() => {
     if (!draft) return [];
