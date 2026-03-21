@@ -16,9 +16,9 @@ DevRel Insights helps Developer Relations teams capture developer feedback at co
 
 ## 📱 Mobile App (iOS)
 
-**Stack:** React Native + Expo + React Native Paper  
-**Version:** 1.0.8  
-**Distribution:** TestFlight (App Store submission ready)
+- **Stack:** React Native + Expo + React Native Paper
+- **Version:** 1.0.8
+- **Distribution:** TestFlight (App Store submission ready)
 
 ### Features
 
@@ -51,8 +51,8 @@ DevRel Insights helps Developer Relations teams capture developer feedback at co
 
 ## 💻 Admin Portal (Web)
 
-**Stack:** Next.js 16 + Material UI + MongoDB  
-**URL:** https://devrel-insights-admin.vercel.app
+- **Stack:** Next.js 16 + Material UI + MongoDB
+- **URL:** https://devrel-insights-admin.vercel.app
 
 ### Features
 
@@ -109,8 +109,8 @@ Both apps use **passwordless magic link authentication**:
 3. Code verified → JWT session created
 4. Session persists via secure cookie (web) or SecureStore (mobile)
 
-**Domain restrictions:** `@mongodb.com` emails by default  
-**Tester account:** `demo@devrelinsights.app` / code `999999`
+- **Domain restrictions:** `@mongodb.com` emails by default
+- **Tester account:** `demo@devrelinsights.app` / code `999999`
 
 ---
 
