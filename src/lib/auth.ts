@@ -5,7 +5,7 @@ import { getDb } from './mongodb';
 import { Role, ROLES, isAdmin as checkIsAdmin, isViewerOnly, canModify, getPermissions, RolePermissions } from './roles';
 
 const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'devrel-insights-secret-change-me'
+  process.env.AUTH_SECRET || 'builder-insights-secret-change-me'
 );
 export const COOKIE_NAME = 'di-session';
 const EXPIRY = '7d';

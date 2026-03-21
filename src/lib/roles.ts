@@ -1,5 +1,5 @@
 /**
- * DevRel Insights - Role-Based Access Control
+ * Builder Insights - Role-Based Access Control
  * 
  * Roles hierarchy:
  * - admin: Full access, user management, settings

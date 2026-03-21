@@ -47,6 +47,7 @@ export default function AdvocatesPage() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const { openHelp } = useHelp();
 
   useEffect(() => {
     async function loadAdvocates() {
@@ -98,8 +99,6 @@ export default function AdvocatesPage() {
       </Box>
     );
   }
-
-  const { openHelp } = useHelp();
 
   return (
     <Box>

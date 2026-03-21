@@ -1,4 +1,4 @@
-// Help content for DevRel Insights Admin Portal
+// Help content for Builder Insights Admin Portal
 // Single source of truth for all help topics
 
 export interface HelpTopic {
@@ -27,7 +27,7 @@ export const helpTopics: Record<string, HelpTopic> = {
     icon: '💡',
     summary: 'Feedback and ideas captured from developer interactions',
     content: `
-Insights are the core unit of feedback in DevRel Insights. They capture developer 
+Insights are the core unit of feedback in Builder Insights. They capture developer 
 pain points, feature requests, praise, and ideas gathered during conferences, 
 meetings, and community interactions.
 
@@ -75,7 +75,7 @@ making it easy for advocates to tag their insights to the right event.
     id: 'advocates',
     title: 'Advocates & Team Members',
     icon: '👥',
-    summary: 'DevRel team members who capture insights',
+    summary: 'Team members who capture insights',
     content: `
 Advocates are the team members who capture insights at events. The Advocates 
 page shows contribution metrics for each team member.
@@ -170,7 +170,7 @@ Consider impact (how many developers affected) and severity
     icon: '📱',
     summary: 'iOS app for capturing insights on the go',
     content: `
-The DevRel Insights mobile app lets advocates capture insights anywhere — 
+The Builder Insights mobile app lets advocates capture insights anywhere — 
 at conference booths, during hallway conversations, or at after-parties.
 
 **Key Features:**
@@ -278,7 +278,7 @@ Use it to understand your global reach and plan future event coverage.
     icon: '🔐',
     summary: 'Control who can access the admin portal',
     content: `
-User Management lets admins control access to the DevRel Insights portal.
+User Management lets admins control access to the Builder Insights portal.
 
 **Features:**
 - Add new users via email invitation
@@ -320,13 +320,38 @@ data if something goes wrong.
     relatedTopics: ['user-management'],
   },
 
+  'program-rollout': {
+    id: 'program-rollout',
+    title: 'Program Rollout Workspace',
+    icon: '🗺️',
+    summary: 'Track the suite rollout across mobile, admin, and docs in one shared command center',
+    content: `
+This workspace is designed for program managers and functional leads who need to
+coordinate a multi-repo launch.
+
+Use it to manage:
+- **Workstreams** — major tracks like iOS launch readiness, Android parity, admin operations, and docs rollout
+- **Launch tasks** — dependency-heavy items that affect launch timing
+- **Stakeholders** — who owns outcomes, who needs visibility, and who approves decisions
+- **Decisions and risks** — the operating log for unresolved calls and issues that can move the date
+
+Think of this page as the release command center for the entire DevRel Insights suite.
+    `,
+    tips: [
+      'Review blocked tasks and pending decisions first in every weekly program review',
+      'Use workstreams for durable planning, and the task board for near-term launch execution',
+      'Keep stakeholder focus areas current so escalation paths stay clear during launch week',
+    ],
+    relatedTopics: ['operations', 'dashboard', 'mobile-app', 'pmo-import'],
+  },
+
   dashboard: {
     id: 'dashboard',
     title: 'Dashboard',
     icon: '📊',
     summary: 'Your command center for insights',
     content: `
-The Dashboard gives you an at-a-glance view of your team's DevRel activity.
+The Dashboard gives you an at-a-glance view of your team's Builder activity.
 
 **What you'll find:**
 - AI-generated executive summary
@@ -351,7 +376,7 @@ The Dashboard gives you an at-a-glance view of your team's DevRel activity.
 export const pageHelp: Record<string, PageHelpContent> = {
   dashboard: {
     title: 'Welcome to your Dashboard',
-    description: 'Your command center for DevRel insights. See trends, top contributors, and critical items at a glance.',
+    description: 'Your command center for builder insights. See trends, top contributors, and critical items at a glance.',
     quickActions: [
       { label: 'Export PDF', description: 'Share a report with stakeholders' },
       { label: 'View Insights', description: 'Drill into the details' },
@@ -374,7 +399,7 @@ export const pageHelp: Record<string, PageHelpContent> = {
     ],
   },
   advocates: {
-    title: 'Your DevRel Team',
+    title: 'Your Builder Team',
     description: 'See contribution metrics for each team member. Click an advocate to see their insights.',
   },
   leaderboard: {
@@ -407,6 +432,14 @@ export const pageHelp: Record<string, PageHelpContent> = {
     quickActions: [
       { label: 'Download Backup', description: 'Save a full JSON backup' },
       { label: 'Export CSV', description: 'Export insights for reporting' },
+    ],
+  },
+  program: {
+    title: 'Program Rollout Workspace',
+    description: 'Coordinate mobile, admin, and docs launch work in one place. Track owners, blockers, stakeholders, and decisions like a real program office.',
+    quickActions: [
+      { label: 'Update Health', description: 'Reflect current rollout confidence' },
+      { label: 'Review Risks', description: 'Escalate issues before they slip the date' },
     ],
   },
 };

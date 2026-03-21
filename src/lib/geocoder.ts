@@ -24,7 +24,7 @@ let lastRequestTime = 0;
 const MIN_DELAY_MS = 1500; // 1.5 seconds to be safe
 
 // User-Agent required by Nominatim ToS
-const USER_AGENT = 'DevRelInsightsAdmin/1.0 (MongoDB DevRel event management)';
+const USER_AGENT = 'BuilderInsightsAdmin/1.0 (MongoDB builder event management)';
 
 async function rateLimitedFetch(url: string, retries = 2): Promise<Response> {
   const now = Date.now();

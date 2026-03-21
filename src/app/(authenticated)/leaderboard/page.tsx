@@ -125,6 +125,7 @@ export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<string>('all');
+  const { openHelp } = useHelp();
 
   useEffect(() => {
     async function loadStats() {
@@ -192,8 +193,6 @@ export default function LeaderboardPage() {
 
   const totalInsights = Object.values(stats.byType).reduce((a, b) => a + b, 0);
   const maxProductArea = Math.max(...Object.values(stats.byProductArea), 1);
-
-  const { openHelp } = useHelp();
 
   return (
     <Box>

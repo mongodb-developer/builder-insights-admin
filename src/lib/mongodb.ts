@@ -1,10 +1,10 @@
 /**
- * DevRel Insights Admin - MongoDB Connection
+ * Builder Insights Admin - MongoDB Connection
  */
 
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, Document } from 'mongodb';
 
-const dbName = process.env.MONGODB_DB || 'devrel-insights';
+const dbName = process.env.MONGODB_DB || 'builder-insights';
 
 let clientPromise: Promise<MongoClient> | null = null;
 
@@ -41,7 +41,7 @@ export async function getDb(): Promise<Db> {
   return client.db(dbName);
 }
 
-export async function getCollection<T extends Document>(name: string) {
+export async function getCollection<T = Document>(name: string) {
   const db = await getDb();
   return db.collection<T>(name);
 }
@@ -54,6 +54,7 @@ export const collections = {
   advocates: 'advocates',
   reactions: 'reactions',
   bugs: 'bugs',
+  programs: 'programs',
 } as const;
 
 // Bug status types

@@ -112,6 +112,7 @@ export default function BugsPage() {
   const [selectedBug, setSelectedBug] = useState<Bug | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const { openHelp } = useHelp();
 
   const loadBugs = useCallback(async () => {
     try {
@@ -233,8 +234,6 @@ export default function BugsPage() {
       </Box>
     );
   }
-
-  const { openHelp } = useHelp();
 
   return (
     <Box>

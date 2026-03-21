@@ -5,7 +5,7 @@ import Joyride from 'react-joyride';
 import { Box, Typography, Button } from '@mui/material';
 import { mongoColors } from '@/theme';
 
-const TOUR_COMPLETED_KEY = 'devrel-insights-tour-completed';
+const TOUR_COMPLETED_KEY = 'builder-insights-tour-completed';
 
 export interface TourStep {
   target: string;
@@ -21,7 +21,7 @@ const defaultSteps: TourStep[] = [
     target: 'body',
     placement: 'center',
     disableBeacon: true,
-    title: 'Welcome to DevRel Insights! 👋',
+    title: 'Welcome to Builder Insights! 👋',
     content: (
       <Box>
         <Typography variant="body2" sx={{ mb: 2 }}>

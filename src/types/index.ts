@@ -1,5 +1,5 @@
 /**
- * DevRel Insights Admin - Type Definitions
+ * Builder Insights Admin - Type Definitions
  * 
  * Normalized schema for PMO data and insights.
  */

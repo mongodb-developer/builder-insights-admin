@@ -15,7 +15,6 @@ import {
   Toolbar,
   Typography,
   Divider,
-  Avatar,
   Chip,
   Button,
   Tooltip,
@@ -26,7 +25,6 @@ import {
   Event as EventIcon,
   Lightbulb as InsightIcon,
   People as PeopleIcon,
-  Analytics as AnalyticsIcon,
   Upload as ImportIcon,
   Settings as SettingsIcon,
   EmojiEvents as EmojiEventsIcon,
@@ -39,6 +37,8 @@ import {
   Help as HelpIcon,
   Search as SearchIcon,
   Build as BuildIcon,
+  AccountTree as ProgramIcon,
+  Monitor as MonitoringIcon,
 } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 import BugReportFab from './BugReportFab';
@@ -56,10 +56,12 @@ const navItems = [
   { label: 'Leaderboard', href: '/leaderboard', icon: <EmojiEventsIcon /> },
   { label: 'World Map', href: '/world', icon: <PublicIcon /> },
   { divider: true },
+  { label: 'Program', href: '/program', icon: <ProgramIcon />, minRole: 'manager' },
   { label: 'Bug Reports', href: '/bugs', icon: <BugReportIcon /> },
   { label: 'PMO Import', href: '/import', icon: <ImportIcon />, minRole: 'manager' },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
   { divider: true, adminOnly: true },
+  { label: 'Monitoring', href: '/monitoring', icon: <MonitoringIcon />, adminOnly: true },
   { label: 'Operations', href: '/operations', icon: <BuildIcon />, adminOnly: true },
   { label: 'User Management', href: '/admin/users', icon: <AdminIcon />, adminOnly: true },
 ];
@@ -144,8 +146,8 @@ function AdminLayoutInner({ children }: Props) {
       <Box sx={{ p: 2 }}>
         <Box
           component="img"
-          src="/banner-light.png"
-          alt="DevRel Insights"
+          src="/logo.svg"
+          alt="Builder Insights"
           sx={{
             width: '100%',
             height: 'auto',
@@ -285,7 +287,7 @@ function AdminLayoutInner({ children }: Props) {
           Sign Out
         </Button>
         <Typography variant="caption" color="text.secondary">
-          MongoDB DevRel Tools
+          MongoDB Builder Tools
         </Typography>
       </Box>
     </Box>
@@ -311,7 +313,7 @@ function AdminLayoutInner({ children }: Props) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap sx={{ fontWeight: 700 }}>
-            DevRel Insights
+            Builder Insights
           </Typography>
         </Toolbar>
       </AppBar>

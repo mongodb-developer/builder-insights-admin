@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
             type: 'header',
             text: {
               type: 'plain_text',
-              text: '📊 Weekly DevRel Insights Digest',
+              text: '📊 Weekly Builder Insights Digest',
               emoji: true,
             },
           },
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           type: 'header',
           text: {
             type: 'plain_text',
-            text: '📊 Weekly DevRel Insights Digest',
+              text: '📊 Weekly Builder Insights Digest',
             emoji: true,
           },
         },
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*${totalInsights} insights* captured this week by the DevRel team! 🎉`,
+              text: `*${totalInsights} insights* captured this week by the builder team! 🎉`,
           },
         },
         {
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
           elements: [
             {
               type: 'mrkdwn',
-              text: `📅 Week of ${oneWeekAgo.toLocaleDateString()} - ${new Date().toLocaleDateString()} | <https://devrel-insights-admin.vercel.app/executive|View Full Dashboard>`,
+              text: `📅 Week of ${oneWeekAgo.toLocaleDateString()} - ${new Date().toLocaleDateString()} | <https://builder-insights-admin.vercel.app/executive|View Full Dashboard>`,
             },
           ],
         },

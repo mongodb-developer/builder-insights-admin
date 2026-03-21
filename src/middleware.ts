@@ -11,7 +11,7 @@ const CORS_HEADERS = {
 
 const COOKIE_NAME = 'di-session';
 const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'devrel-insights-secret-change-me'
+  process.env.AUTH_SECRET || 'builder-insights-secret-change-me'
 );
 
 const PUBLIC_PATHS = [

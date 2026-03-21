@@ -406,7 +406,7 @@ export default function DashboardPage() {
     pdf.setTextColor(0, 30, 43);
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('DevRel Insights Executive Summary', margin, 17);
+    pdf.text('Builder Insights Executive Summary', margin, 17);
 
     yPos = 35;
 
@@ -539,10 +539,10 @@ export default function DashboardPage() {
     // Footer
     pdf.setFontSize(8);
     pdf.setTextColor(150, 150, 150);
-    pdf.text('MongoDB Developer Relations • devrel-insights-admin.vercel.app', margin, pageHeight - 10);
+    pdf.text('MongoDB Builder Program • builder-insights-admin.vercel.app', margin, pageHeight - 10);
 
     // Download
-    const filename = `devrel-insights-${aiSummary.period.toLowerCase().replace(' ', '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const filename = `builder-insights-${aiSummary.period.toLowerCase().replace(' ', '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
     pdf.save(filename);
   };
 
@@ -556,7 +556,7 @@ export default function DashboardPage() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>DevRel Insights - ${aiSummary.period}</title>
+        <title>Builder Insights - ${aiSummary.period}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: #001E2B; }
           .header { background: #00ED64; padding: 20px; margin: -40px -40px 30px -40px; }
@@ -573,7 +573,7 @@ export default function DashboardPage() {
         </style>
       </head>
       <body>
-        <div class="header"><h1>DevRel Insights Executive Summary</h1></div>
+        <div class="header"><h1>Builder Insights Executive Summary</h1></div>
         <div class="meta">
           <span>${aiSummary.period} Report</span>
           <span>Generated: ${new Date(aiSummary.generatedAt).toLocaleDateString()}</span>
@@ -592,7 +592,7 @@ export default function DashboardPage() {
         <div class="summary">
           ${aiSummary.summary.split('\n\n').map((p) => `<p>${p}</p>`).join('')}
         </div>
-        <div class="footer">MongoDB Developer Relations • devrel-insights-admin.vercel.app</div>
+        <div class="footer">MongoDB Builder Program • builder-insights-admin.vercel.app</div>
       </body>
       </html>
     `);
@@ -616,7 +616,7 @@ export default function DashboardPage() {
     pdf.setTextColor(0, 30, 43);
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('DevRel Insights Executive Report', margin, 17);
+    pdf.text('Builder Insights Executive Report', margin, 17);
 
     yPos = 35;
     pdf.setFontSize(10);
@@ -820,9 +820,9 @@ export default function DashboardPage() {
     // Footer
     pdf.setFontSize(8);
     pdf.setTextColor(150, 150, 150);
-    pdf.text('MongoDB Developer Relations • devrel-insights-admin.vercel.app', margin, pageHeight - 10);
+    pdf.text('MongoDB Builder Program • builder-insights-admin.vercel.app', margin, pageHeight - 10);
 
-    pdf.save(`devrel-exec-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    pdf.save(`builder-exec-report-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const handleExecPrint = () => {
@@ -835,7 +835,7 @@ export default function DashboardPage() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>DevRel Insights Executive Report</title>
+        <title>Builder Insights Executive Report</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: #001E2B; }
           .header { background: #00ED64; padding: 20px; margin: -40px -40px 30px -40px; }
@@ -853,7 +853,7 @@ export default function DashboardPage() {
         </style>
       </head>
       <body>
-        <div class="header"><h1>DevRel Insights Executive Report</h1></div>
+        <div class="header"><h1>Builder Insights Executive Report</h1></div>
         <div class="grid">
           <div class="metric"><div class="metric-label">Total Insights</div><div class="metric-value">${execData.summary.totalInsights}</div></div>
           <div class="metric"><div class="metric-label">This Week</div><div class="metric-value">${execData.summary.thisWeek}</div></div>

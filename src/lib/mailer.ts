@@ -35,7 +35,7 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
     console.log('[Mailer] SMTP verified');
     
     const result = await transporter.sendMail({
-      from: `DevRel Insights <${from}>`,
+      from: `Builder Insights <${from}>`,
       to,
       subject,
       html,

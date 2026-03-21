@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * DevRel Insights - Landing Page
+ * Builder Insights - Landing Page
  * 
  * Marketing page with:
  * - App overview and features
@@ -238,7 +238,7 @@ export default function LandingPage() {
               sx={{ width: 28, height: 42 }}
             />
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              DevRel Insights
+              Builder Insights
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
@@ -294,7 +294,7 @@ export default function LandingPage() {
               color="text.secondary" 
               sx={{ maxWidth: 600, mx: 'auto', mb: 4, lineHeight: 1.7 }}
             >
-              The mobile-first tool for Developer Advocates to capture, categorize, 
+              The mobile-first tool for builder teams to capture, categorize, 
               and share insights from conferences, workshops, and customer conversations.
             </Typography>
             
@@ -343,8 +343,8 @@ export default function LandingPage() {
           >
             <Box
               component="img"
-              src="/banner-dark.png"
-              alt="DevRel Insights - Capture What Developers Say"
+              src="/logo.svg"
+              alt="Builder Insights - Capture What Builders Say"
               sx={{
                 width: '100%',
                 maxWidth: 700,
@@ -446,7 +446,7 @@ export default function LandingPage() {
               textAlign="center" 
               sx={{ mb: 6, maxWidth: 600, mx: 'auto' }}
             >
-              Every feature designed for the unique needs of DevRel professionals
+              Every feature designed for the unique needs of builder programs
             </Typography>
             <Grid container spacing={3}>
               {features.map((feature, index) => (
@@ -631,7 +631,7 @@ export default function LandingPage() {
                     </Typography>
                   </Box>
                   <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                    Build integrations, automate workflows, and extend DevRel Insights 
+                     Build integrations, automate workflows, and extend Builder Insights 
                     with our comprehensive REST API. Full CRUD operations for insights, 
                     events, and team data.
                   </Typography>
@@ -704,7 +704,7 @@ export default function LandingPage() {
               Ready to capture better insights?
             </Typography>
             <Typography color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
-              Join the MongoDB DevRel team in beta testing. Available now on iOS via TestFlight.
+              Join the MongoDB builder team in beta testing. Available now on iOS via TestFlight.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
               <Button
@@ -756,11 +756,11 @@ export default function LandingPage() {
                     sx={{ width: 20, height: 30 }}
                   />
                   <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                    DevRel Insights
+                    Builder Insights
                   </Typography>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
-                  Built with 💚 by the MongoDB Developer Relations team
+                  Built with 💚 by the MongoDB builders team
                 </Typography>
               </Grid>
               <Grid size={{ xs: 6, md: 2 }}>

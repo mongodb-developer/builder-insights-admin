@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
     // TESTER BYPASS: Allow test accounts without sending email
     // All test accounts use code 999999
     const TESTER_EMAILS = [
-      'demo@devrelinsights.app',      // advocate
-      'admin@devrelinsights.app',     // admin
-      'manager@devrelinsights.app',   // manager
-      'advocate@devrelinsights.app',  // advocate
-      'viewer@devrelinsights.app',    // viewer (read-only)
+      'demo@builderinsights.app',      // advocate
+      'admin@builderinsights.app',     // admin
+      'manager@builderinsights.app',   // manager
+      'advocate@builderinsights.app',  // advocate
+      'viewer@builderinsights.app',    // viewer (read-only)
     ];
     if (TESTER_EMAILS.includes(normalizedEmail)) {
       // Return success - user will enter code 999999 which is handled in verify-code
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     const magicUrl = `${baseUrl}/api/auth/magic-link/${token}`;
     
     const firstName = (advocate?.name || user?.name || '').split(' ')[0] || 'there';
-    const appName = isMobile ? 'DevRel Insights Mobile' : 'DevRel Insights Admin';
+    const appName = isMobile ? 'Builder Insights Mobile' : 'Builder Insights Admin';
 
     // Format code with spaces for readability
     const formattedCode = `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         </p>
         <p><a href="${magicUrl}" style="display:inline-block;padding:12px 24px;background:#00ED64;color:#001E2B;text-decoration:none;border-radius:8px;font-weight:600;">Sign In</a></p>
         ` : ''}
-        <p style="margin-top:24px;color:#889397;">— DevRel Insights</p>
+        <p style="margin-top:24px;color:#889397;">— Builder Insights</p>
       `,
     });
 

@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DevRel Insights Admin',
-  description: 'Admin panel for DevRel Insights - Manage events, insights, and analytics',
+  title: 'Builder Insights Admin',
+  description: 'Admin panel for Builder Insights - manage events, insights, and analytics',
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',

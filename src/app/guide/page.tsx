@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * DevRel Insights - Comprehensive User Guide
+ * Builder Insights - Comprehensive User Guide
  * 
  * Public documentation page covering:
  * - Mobile app quick start
@@ -223,7 +223,7 @@ export default function GuidePage() {
           {/* Page Header */}
           <Box sx={{ mb: 6, textAlign: 'center' }}>
             <Typography variant="h2" sx={{ mb: 2 }}>
-              DevRel Insights Guide
+              Builder Insights Guide
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
               Everything you need to know about capturing, managing, and analyzing developer insights.
@@ -255,7 +255,7 @@ export default function GuidePage() {
             <Box>
               <Section id="mobile-install" title="Getting Started" icon={<DownloadIcon sx={{ fontSize: 32 }} />}>
                 <Alert severity="info" sx={{ mb: 3 }}>
-                  DevRel Insights is currently in beta. Join via TestFlight to get early access.
+                  Builder Insights is currently in beta. Join via TestFlight to get early access.
                 </Alert>
                 
                 <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
@@ -272,7 +272,7 @@ export default function GuidePage() {
                       </ListItem>
                       <ListItem>
                         <ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon>
-                        <ListItemText primary="Install DevRel Insights and open the app" />
+                        <ListItemText primary="Install Builder Insights and open the app" />
                       </ListItem>
                     </List>
                     <Button
@@ -306,7 +306,7 @@ export default function GuidePage() {
                       </ListItem>
                     </List>
                     <Alert severity="success" sx={{ mt: 2 }}>
-                      <strong>Test Account:</strong> Use <code>demo@devrelinsights.app</code> with code <code>999999</code> to try the app.
+                      <strong>Test Account:</strong> Use <code>demo@builderinsights.app</code> with code <code>999999</code> to try the app.
                     </Alert>
                   </CardContent>
                 </Card>
@@ -368,7 +368,7 @@ export default function GuidePage() {
                   <CardContent>
                     <Typography variant="h6" sx={{ mb: 2 }}>Offline Mode</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      No internet? No problem. DevRel Insights works fully offline:
+                      No internet? No problem. Builder Insights works fully offline:
                     </Typography>
                     <List dense>
                       <ListItem>
@@ -420,7 +420,7 @@ export default function GuidePage() {
             <Box>
               <Section id="dashboard-overview" title="Dashboard Overview" icon={<DashboardIcon sx={{ fontSize: 32 }} />}>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  The web dashboard at <Link href="/login" style={{ color: '#00ED64' }}>devrel-insights-admin.vercel.app</Link> provides 
+                  The web dashboard at <Link href="/login" style={{ color: '#00ED64' }}>builder-insights-admin.vercel.app</Link> provides 
                   powerful tools for viewing, analyzing, and reporting on captured insights.
                 </Typography>
 
@@ -522,7 +522,7 @@ export default function GuidePage() {
             <Box>
               <Section id="roles-overview" title="Role-Based Access" icon={<SecurityIcon sx={{ fontSize: 32 }} />}>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  DevRel Insights uses a role-based access control system. New users are automatically 
+                  Builder Insights uses a role-based access control system. New users are automatically 
                   assigned the <strong>Viewer</strong> role and can be upgraded by administrators.
                 </Typography>
 
@@ -590,31 +590,31 @@ export default function GuidePage() {
                     </TableHead>
                     <TableBody>
                       <TableRow>
-                        <TableCell><code>admin@devrelinsights.app</code></TableCell>
+                        <TableCell><code>admin@builderinsights.app</code></TableCell>
                         <TableCell><code>999999</code></TableCell>
                         <TableCell><Chip label="Admin" size="small" color="error" /></TableCell>
                         <TableCell>Full access</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell><code>manager@devrelinsights.app</code></TableCell>
+                        <TableCell><code>manager@builderinsights.app</code></TableCell>
                         <TableCell><code>999999</code></TableCell>
                         <TableCell><Chip label="Manager" size="small" color="warning" /></TableCell>
                         <TableCell>Manage events, import</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell><code>advocate@devrelinsights.app</code></TableCell>
+                        <TableCell><code>advocate@builderinsights.app</code></TableCell>
                         <TableCell><code>999999</code></TableCell>
                         <TableCell><Chip label="Advocate" size="small" color="primary" /></TableCell>
                         <TableCell>Create/edit insights</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell><code>viewer@devrelinsights.app</code></TableCell>
+                        <TableCell><code>viewer@builderinsights.app</code></TableCell>
                         <TableCell><code>999999</code></TableCell>
                         <TableCell><Chip label="Viewer" size="small" /></TableCell>
                         <TableCell>Read-only</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell><code>demo@devrelinsights.app</code></TableCell>
+                        <TableCell><code>demo@builderinsights.app</code></TableCell>
                         <TableCell><code>999999</code></TableCell>
                         <TableCell><Chip label="Advocate" size="small" color="primary" /></TableCell>
                         <TableCell>Demo account</TableCell>
@@ -631,8 +631,8 @@ export default function GuidePage() {
             <Box id="api">
               <Section id="api-overview" title="API Overview" icon={<ApiIcon sx={{ fontSize: 32 }} />}>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  DevRel Insights provides a REST API for building integrations and automating workflows.
-                  All endpoints are available at <code>https://devrel-insights-admin.vercel.app/api</code>.
+                  Builder Insights provides a REST API for building integrations and automating workflows.
+                  All endpoints are available at <code>https://builder-insights-admin.vercel.app/api</code>.
                 </Typography>
 
                 <Alert severity="warning" sx={{ mb: 3 }}>
@@ -663,7 +663,7 @@ export default function GuidePage() {
                         <ListItemText primary={<code>eventId</code>} secondary="Filter by event ID" />
                       </ListItem>
                     </List>
-                    <CodeBlock title="Example Request">{`curl -X GET "https://devrel-insights-admin.vercel.app/api/insights?type=Pain%20Point&priority=High" \\
+                    <CodeBlock title="Example Request">{`curl -X GET "https://builder-insights-admin.vercel.app/api/insights?type=Pain%20Point&priority=High" \\
   -H "Cookie: di-session=YOUR_SESSION_TOKEN"`}</CodeBlock>
                     <CodeBlock title="Example Response">{`{
   "insights": [
@@ -691,7 +691,7 @@ export default function GuidePage() {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Create a new insight. Requires <strong>Advocate</strong> role or higher.
                     </Typography>
-                    <CodeBlock title="Example Request">{`curl -X POST "https://devrel-insights-admin.vercel.app/api/insights" \\
+                    <CodeBlock title="Example Request">{`curl -X POST "https://builder-insights-admin.vercel.app/api/insights" \\
   -H "Cookie: di-session=YOUR_SESSION_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -712,7 +712,7 @@ export default function GuidePage() {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Generate AI analysis for an insight. Returns summary, themes, and priority suggestions.
                     </Typography>
-                    <CodeBlock title="Example Request">{`curl -X POST "https://devrel-insights-admin.vercel.app/api/insights/65f1a2b3c4d5e6f7a8b9c0d1/analyze" \\
+                    <CodeBlock title="Example Request">{`curl -X POST "https://builder-insights-admin.vercel.app/api/insights/65f1a2b3c4d5e6f7a8b9c0d1/analyze" \\
   -H "Cookie: di-session=YOUR_SESSION_TOKEN"`}</CodeBlock>
                     <CodeBlock title="Example Response">{`{
   "analysis": {
@@ -734,7 +734,7 @@ export default function GuidePage() {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Retrieve all events (conferences, meetups, customer visits).
                     </Typography>
-                    <CodeBlock title="Example Request">{`curl -X GET "https://devrel-insights-admin.vercel.app/api/events" \\
+                    <CodeBlock title="Example Request">{`curl -X GET "https://builder-insights-admin.vercel.app/api/events" \\
   -H "Cookie: di-session=YOUR_SESSION_TOKEN"`}</CodeBlock>
                   </CardContent>
                 </Card>
@@ -745,7 +745,7 @@ export default function GuidePage() {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Create a new event. Requires <strong>Manager</strong> role or higher.
                     </Typography>
-                    <CodeBlock title="Example Request">{`curl -X POST "https://devrel-insights-admin.vercel.app/api/events" \\
+                    <CodeBlock title="Example Request">{`curl -X POST "https://builder-insights-admin.vercel.app/api/events" \\
   -H "Cookie: di-session=YOUR_SESSION_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -798,11 +798,11 @@ export default function GuidePage() {
               <Section id="faq" title="Frequently Asked Questions" icon={<HelpOutlineIcon sx={{ fontSize: 32 }} />}>
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography fontWeight={600}>Who can use DevRel Insights?</Typography>
+                    <Typography fontWeight={600}>Who can use Builder Insights?</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Typography color="text.secondary">
-                      DevRel Insights is currently available to MongoDB Developer Relations team members. 
+                      Builder Insights is currently available to MongoDB builder team members. 
                       Sign in with your @mongodb.com email to get started. External collaborators can 
                       request access through their MongoDB contact.
                     </Typography>
@@ -930,7 +930,7 @@ export default function GuidePage() {
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            Built with 💚 by the MongoDB Developer Relations team
+            Built with 💚 by the MongoDB builders team
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
             © 2026 MongoDB, Inc.

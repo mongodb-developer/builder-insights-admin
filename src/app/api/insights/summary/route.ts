@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     if (insights.length === 0) {
       return NextResponse.json({
-        summary: `No insights were captured during ${periodLabel.toLowerCase()}. The DevRel Insights app is ready to collect developer feedback at your next event.`,
+        summary: `No insights were captured during ${periodLabel.toLowerCase()}. The Builder Insights app is ready to collect developer feedback at your next event.`,
         stats: { total: 0, events: 0, advocates: 0 },
         period: periodLabel,
         generatedAt: now.toISOString(),

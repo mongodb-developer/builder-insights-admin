@@ -1,4 +1,4 @@
-# DevRel Insights — Mobile App Tester Guide
+# Builder Insights — Mobile App Tester Guide
 
 Quick reference for testers to log in and verify key features of the mobile app.
 
@@ -20,19 +20,19 @@ Quick reference for testers to log in and verify key features of the mobile app.
 
 | Account | Email | Code |
 |---------|-------|------|
-| **Demo** | `demo@devrelinsights.app` | `999999` |
+| **Demo** | `demo@builderinsights.app` | `999999` |
 
 ### Login Flow
 
 1. Open the app.
-2. Enter your email: `demo@devrelinsights.app`
+2. Enter your email: `demo@builderinsights.app`
 3. Tap **Send Code**.
 4. Enter the 6-digit code: `999999`
 5. You should land on the Home screen.
 
 **Note:** If magic link fails (e.g. network issues), the app may show "Dev mode: Use code 123456" — try that code instead.
 
-**Allowed domains:** Only `@mongodb.com` or `@devrelinsights.app` emails are accepted.
+**Allowed domains:** Only `@mongodb.com` or `@builderinsights.app` emails are accepted.
 
 ---
 
@@ -145,7 +145,7 @@ Both the mobile app and the admin portal let you submit bug reports directly. Re
 
 **Tips for good bug reports:**
 - Be specific: "Login fails with code 999999" vs "Login broken"
-- Include steps: "1. Open app 2. Enter demo@devrelinsights.app 3. Enter 999999 4. See error"
+- Include steps: "1. Open app 2. Enter demo@builderinsights.app 3. Enter 999999 4. See error"
 - Note your environment: device, OS version, app version
 - Screenshots help, especially for UI issues
 
@@ -155,7 +155,7 @@ Both the mobile app and the admin portal let you submit bug reports directly. Re
 
 | Issue | Fix |
 |-------|-----|
-| App won't log in | Use `demo@devrelinsights.app` / `999999`. Check network. Force-quit and reopen. |
+| App won't log in | Use `demo@builderinsights.app` / `999999`. Check network. Force-quit and reopen. |
 | Voice recording fails | Check mic permissions in device Settings. Ensure phone is not muted. Transcription needs network. |
 | Insights not syncing | Check network. Pending count shows unsynced items. Refresh or wait for auto-sync. |
 | App crashes on launch | Clear app data/cache, reinstall from TestFlight. |
@@ -167,7 +167,7 @@ Both the mobile app and the admin portal let you submit bug reports directly. Re
 | Resource | Value |
 |----------|-------|
 | **TestFlight (iOS)** | https://testflight.apple.com/join/rAqHXs1Y |
-| **Demo Email** | demo@devrelinsights.app |
+| **Demo Email** | demo@builderinsights.app |
 | **Demo Code** | 999999 |
 | **Bug report (mobile)** | Shake phone |
 | **Bug report (admin)** | FAB button, bottom-right corner |

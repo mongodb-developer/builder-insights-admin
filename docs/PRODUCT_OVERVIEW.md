@@ -1,4 +1,4 @@
-# DevRel Insights — Product Overview
+# Builder Insights — Product Overview
 
 *A complete system for capturing, analyzing, and reporting developer feedback from the field.*
 
@@ -6,7 +6,7 @@
 
 ## 🎯 What It Does
 
-DevRel Insights helps Developer Relations teams capture developer feedback at conferences, meetups, and customer interactions — then transforms that raw feedback into actionable insights for product teams.
+Builder Insights helps teams capture developer feedback at conferences, meetups, and customer interactions — then transforms that raw feedback into actionable insights for product teams.
 
 **The Problem:** DevRel teams gather invaluable feedback at events, but it often gets lost in notebooks, Slack threads, or forgotten entirely.
 
@@ -52,7 +52,7 @@ DevRel Insights helps Developer Relations teams capture developer feedback at co
 ## 💻 Admin Portal (Web)
 
 - **Stack:** Next.js 16 + Material UI + MongoDB
-- **URL:** https://devrel-insights-admin.vercel.app
+- **URL:** https://builder-insights-admin.vercel.app
 
 ### Features
 
@@ -110,7 +110,7 @@ Both apps use **passwordless magic link authentication**:
 4. Session persists via secure cookie (web) or SecureStore (mobile)
 
 - **Domain restrictions:** `@mongodb.com` emails by default
-- **Tester account:** `demo@devrelinsights.app` / code `999999`
+- **Tester account:** `demo@builderinsights.app` / code `999999`
 
 ---
 
@@ -168,10 +168,10 @@ advocates
 
 | Resource | URL |
 |----------|-----|
-| Admin Portal | https://devrel-insights-admin.vercel.app |
+| Admin Portal | https://builder-insights-admin.vercel.app |
 | TestFlight | https://testflight.apple.com/join/rAqHXs1Y |
-| Admin Repo | github.com/mrlynn/devrel-insights-admin |
-| Mobile Repo | github.com/mrlynn/devrel-insights |
+| Admin Repo | github.com/mongodb-developer/builder-insights-admin |
+| Mobile Repo | github.com/mongodb-developer/builder-insights |
 
 ---
 

@@ -26,7 +26,7 @@ interface PageHelpProps {
 }
 
 // Track dismissed help cards in localStorage
-const DISMISSED_KEY = 'devrel-insights-dismissed-help';
+const DISMISSED_KEY = 'builder-insights-dismissed-help';
 
 function getDismissed(): string[] {
   if (typeof window === 'undefined') return [];

@@ -1,6 +1,6 @@
-# DevRel Insights Admin
+# Builder Insights Admin
 
-**Admin backend for DevRel Insights — manage events, insights, and team analytics.**
+**Admin backend for Builder Insights — manage events, insights, and team analytics.**
 
 Built with Next.js 16 + Material UI 6 + MongoDB native driver.
 
@@ -63,7 +63,7 @@ Mobile App (React Native + Expo)
       ▼
 ┌─────────────────────────────┐
 │       MongoDB Atlas         │
-│   (devrel-insights db)      │
+│   (builder-insights db)     │
 └─────────────────────────────┘
       ▲
       │ Native MongoDB Driver
@@ -82,7 +82,7 @@ Both apps share the same MongoDB database:
 ```bash
 # Required
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority
-MONGODB_DB=devrel-insights
+MONGODB_DB=builder-insights
 ```
 
 ---

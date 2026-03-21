@@ -123,7 +123,7 @@ export default function OperationsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `devrel-insights-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `builder-insights-backup-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -181,7 +181,7 @@ export default function OperationsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `devrel-insights-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `builder-insights-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -306,7 +306,7 @@ export default function OperationsPage() {
                 label={`${dbStats.totalDocuments?.toLocaleString() || 0} documents`}
                 variant="outlined"
               />
-              <Chip label={`Database: ${dbStats.database || 'devrel-insights'}`} variant="outlined" color="primary" />
+              <Chip label={`Database: ${dbStats.database || 'builder-insights'}`} variant="outlined" color="primary" />
             </Box>
           )}
         </CardContent>

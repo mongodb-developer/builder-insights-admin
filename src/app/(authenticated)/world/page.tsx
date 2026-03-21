@@ -3,7 +3,7 @@
 /**
  * World Map - Active Users Dashboard
  * 
- * Shows where DevRel Insights users are around the world.
+ * Shows where Builder Insights users are around the world.
  */
 
 import React, { useState, useEffect, memo } from 'react';
@@ -223,6 +223,7 @@ export default function WorldPage() {
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('24');
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
+  const { openHelp } = useHelp();
 
   useEffect(() => {
     fetchData();
@@ -259,8 +260,6 @@ export default function WorldPage() {
     );
   }
 
-  const { openHelp } = useHelp();
-
   return (
     <Box sx={{ p: 3 }}>
       <PageHelp page="world" onOpenDrawer={openHelp} />
@@ -272,7 +271,7 @@ export default function WorldPage() {
             <GlobeIcon color="primary" /> Users Around the World
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            See where DevRel Insights is being used
+            See where Builder Insights is being used
           </Typography>
         </Box>
         <ToggleButtonGroup

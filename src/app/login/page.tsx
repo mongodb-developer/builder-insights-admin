@@ -113,8 +113,8 @@ function LoginForm() {
           {/* Banner */}
           <Box
             component="img"
-            src="/banner-light.png"
-            alt="DevRel Insights"
+            src="/logo.svg"
+            alt="Builder Insights"
             sx={{
               width: '100%',
               height: 'auto',
@@ -133,7 +133,7 @@ function LoginForm() {
                 letterSpacing: '-0.02em',
               }}
             >
-              DevRel Insights
+              Builder Insights
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
               Admin Portal
