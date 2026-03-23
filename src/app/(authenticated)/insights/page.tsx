@@ -32,6 +32,7 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Avatar,
+  Checkbox,
   Divider,
 } from '@mui/material';
 import {
@@ -48,6 +49,10 @@ import {
   Person,
   CalendarToday,
   AutoAwesome as AIIcon,
+  Mic as MicIcon,
+  HourglassEmpty as HourglassIcon,
+  SelectAll,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import InsightFormDialog, { InsightFormData } from '@/components/InsightFormDialog';
 import InsightDetailDrawer from '@/components/InsightDetailDrawer';
@@ -79,6 +84,7 @@ interface AIAnalysis {
 
 interface Insight {
   _id: string;
+  title?: string;
   type: string;
   text: string;
   sentiment: string;
@@ -94,11 +100,32 @@ interface Insight {
   reactionCounts?: ReactionCounts;
   reactionTotal?: number;
   aiAnalysis?: AIAnalysis;
+  aiDistillation?: {
+    summary?: string;
+    bullets?: string[];
+    actionItems?: string[];
+    keyPhrases?: string[];
+    source?: string;
+  };
+  audioIntelligence?: {
+    durationMs?: number;
+    speakers?: Array<{ id: string; label: string }>;
+  };
+  pendingTranscription?: string | null;
+  transcriptionError?: string;
 }
 
 interface Event {
   _id: string;
   name: string;
+}
+
+function formatDuration(ms?: number) {
+  if (!ms) return '';
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
 const priorityColors: Record<string, 'default' | 'info' | 'warning' | 'error'> = {
@@ -190,6 +217,92 @@ export default function InsightsPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
 
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionOpen, setBulkActionOpen] = useState<'type' | 'sentiment' | 'priority' | 'tag' | null>(null);
+  const [bulkTagValue, setBulkTagValue] = useState('');
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(paginatedInsights.map((i) => i._id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setBulkActionOpen(null);
+  };
+
+  const applyBulkUpdate = async (updates: Record<string, any>) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/insights/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+          })
+        )
+      );
+      setSnackbar({ open: true, message: `Updated ${ids.length} insight${ids.length === 1 ? '' : 's'}`, severity: 'success' });
+      clearSelection();
+      loadInsights();
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to update some insights', severity: 'error' });
+    }
+  };
+
+  const applyBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} insight${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+
+    try {
+      await Promise.all(ids.map((id) => fetch(`/api/insights/${id}`, { method: 'DELETE' })));
+      setSnackbar({ open: true, message: `Deleted ${ids.length} insight${ids.length === 1 ? '' : 's'}`, severity: 'success' });
+      clearSelection();
+      loadInsights();
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to delete some insights', severity: 'error' });
+    }
+  };
+
+  const applyBulkAddTag = async () => {
+    const tag = bulkTagValue.trim();
+    if (!tag) return;
+    const ids = Array.from(selectedIds);
+
+    try {
+      await Promise.all(
+        ids.map(async (id) => {
+          const insight = insights.find((i) => i._id === id);
+          const existingTags = insight?.tags || [];
+          if (existingTags.includes(tag)) return;
+          return fetch(`/api/insights/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags: [...existingTags, tag] }),
+          });
+        })
+      );
+      setSnackbar({ open: true, message: `Added tag "${tag}" to ${ids.length} insight${ids.length === 1 ? '' : 's'}`, severity: 'success' });
+      setBulkTagValue('');
+      clearSelection();
+      loadInsights();
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to add tag to some insights', severity: 'error' });
+    }
+  };
+
   const loadInsights = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -227,6 +340,8 @@ export default function InsightsPage() {
       const search = filters.search.toLowerCase();
       return (
         insight.text.toLowerCase().includes(search) ||
+        insight.title?.toLowerCase().includes(search) ||
+        insight.aiDistillation?.summary?.toLowerCase().includes(search) ||
         insight.tags.some((t) => t.includes(search)) ||
         insight.eventName?.toLowerCase().includes(search) ||
         insight.advocateName?.toLowerCase().includes(search)
@@ -462,6 +577,116 @@ export default function InsightsPage() {
         </CardContent>
       </Card>
 
+      {/* Bulk Action Bar */}
+      {canModify && selectedIds.size > 0 && (
+        <Card sx={{ mb: 2, border: '1px solid', borderColor: 'primary.main', bgcolor: 'primary.50' }}>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip label={`${selectedIds.size} selected`} color="primary" size="small" sx={{ fontWeight: 700 }} />
+                <Button size="small" startIcon={<SelectAll />} onClick={selectAll}>Select Page</Button>
+                <Button size="small" startIcon={<CloseIcon />} onClick={clearSelection}>Clear</Button>
+              </Stack>
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                {/* Type */}
+                {bulkActionOpen === 'type' ? (
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                      <Select
+                        displayEmpty
+                        value=""
+                        onChange={(e) => { if (e.target.value) applyBulkUpdate({ type: e.target.value }); setBulkActionOpen(null); }}
+                      >
+                        <MenuItem value="" disabled>Set type...</MenuItem>
+                        <MenuItem value="Pain Point">Pain Point</MenuItem>
+                        <MenuItem value="Feature Request">Feature Request</MenuItem>
+                        <MenuItem value="Positive Feedback">Positive Feedback</MenuItem>
+                        <MenuItem value="Bug Report">Bug Report</MenuItem>
+                        <MenuItem value="Competitive Intel">Competitive Intel</MenuItem>
+                        <MenuItem value="Use Case">Use Case</MenuItem>
+                        <MenuItem value="Documentation">Documentation</MenuItem>
+                        <MenuItem value="General Feedback">General Feedback</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <IconButton size="small" onClick={() => setBulkActionOpen(null)}><CloseIcon fontSize="small" /></IconButton>
+                  </Stack>
+                ) : (
+                  <Button size="small" variant="outlined" onClick={() => setBulkActionOpen('type')}>Set Type</Button>
+                )}
+
+                {/* Sentiment */}
+                {bulkActionOpen === 'sentiment' ? (
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <FormControl size="small" sx={{ minWidth: 130 }}>
+                      <Select
+                        displayEmpty
+                        value=""
+                        onChange={(e) => { if (e.target.value) applyBulkUpdate({ sentiment: e.target.value }); setBulkActionOpen(null); }}
+                      >
+                        <MenuItem value="" disabled>Set sentiment...</MenuItem>
+                        <MenuItem value="Positive">Positive</MenuItem>
+                        <MenuItem value="Neutral">Neutral</MenuItem>
+                        <MenuItem value="Negative">Negative</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <IconButton size="small" onClick={() => setBulkActionOpen(null)}><CloseIcon fontSize="small" /></IconButton>
+                  </Stack>
+                ) : (
+                  <Button size="small" variant="outlined" onClick={() => setBulkActionOpen('sentiment')}>Set Sentiment</Button>
+                )}
+
+                {/* Priority */}
+                {bulkActionOpen === 'priority' ? (
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <FormControl size="small" sx={{ minWidth: 130 }}>
+                      <Select
+                        displayEmpty
+                        value=""
+                        onChange={(e) => { if (e.target.value) applyBulkUpdate({ priority: e.target.value }); setBulkActionOpen(null); }}
+                      >
+                        <MenuItem value="" disabled>Set priority...</MenuItem>
+                        <MenuItem value="Critical">Critical</MenuItem>
+                        <MenuItem value="High">High</MenuItem>
+                        <MenuItem value="Medium">Medium</MenuItem>
+                        <MenuItem value="Low">Low</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <IconButton size="small" onClick={() => setBulkActionOpen(null)}><CloseIcon fontSize="small" /></IconButton>
+                  </Stack>
+                ) : (
+                  <Button size="small" variant="outlined" onClick={() => setBulkActionOpen('priority')}>Set Priority</Button>
+                )}
+
+                {/* Add Tag */}
+                {bulkActionOpen === 'tag' ? (
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <TextField
+                      size="small"
+                      placeholder="Tag name"
+                      value={bulkTagValue}
+                      onChange={(e) => setBulkTagValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') applyBulkAddTag(); }}
+                      sx={{ width: 140 }}
+                      autoFocus
+                    />
+                    <Button size="small" variant="contained" onClick={applyBulkAddTag} disabled={!bulkTagValue.trim()}>Add</Button>
+                    <IconButton size="small" onClick={() => { setBulkActionOpen(null); setBulkTagValue(''); }}><CloseIcon fontSize="small" /></IconButton>
+                  </Stack>
+                ) : (
+                  <Button size="small" variant="outlined" onClick={() => setBulkActionOpen('tag')}>Add Tag</Button>
+                )}
+
+                <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+                <Button size="small" variant="outlined" color="error" startIcon={<Delete />} onClick={applyBulkDelete}>
+                  Delete ({selectedIds.size})
+                </Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Empty State */}
       {filteredInsights.length === 0 ? (
         <Card>
@@ -486,6 +711,19 @@ export default function InsightsPage() {
             <Table>
               <TableHead>
                 <TableRow>
+                  {canModify && (
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        size="small"
+                        checked={paginatedInsights.length > 0 && paginatedInsights.every((i) => selectedIds.has(i._id))}
+                        indeterminate={paginatedInsights.some((i) => selectedIds.has(i._id)) && !paginatedInsights.every((i) => selectedIds.has(i._id))}
+                        onChange={(e) => {
+                          if (e.target.checked) selectAll();
+                          else clearSelection();
+                        }}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell width={40}></TableCell>
                   <TableCell>Insight</TableCell>
                   <TableCell>AI Summary</TableCell>
@@ -506,74 +744,86 @@ export default function InsightsPage() {
                     sx={{ cursor: 'pointer' }}
                     onClick={() => handleViewDetail(insight)}
                   >
+                    {canModify && (
+                      <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          size="small"
+                          checked={selectedIds.has(insight._id)}
+                          onChange={() => toggleSelect(insight._id)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {getSentimentIcon(insight.sentiment)}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 350 }}>
+                      {insight.title && (
+                        <Typography variant="body2" sx={{ fontWeight: 600, maxWidth: 350 }}>
+                          {insight.title}
+                        </Typography>
+                      )}
+                      <Typography variant="body2" sx={{ maxWidth: 350, color: insight.title ? 'text.secondary' : 'text.primary', fontSize: insight.title ? '0.8rem' : undefined }}>
                         {insight.text.length > 120
                           ? `${insight.text.substring(0, 120)}...`
                           : insight.text}
                       </Typography>
-                      {insight.tags.length > 0 && (
-                        <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
-                          {insight.tags.slice(0, 3).map((tag) => (
-                            <Chip key={tag} label={tag} size="small" variant="outlined" />
-                          ))}
-                          {insight.tags.length > 3 && (
-                            <Chip label={`+${insight.tags.length - 3}`} size="small" />
-                          )}
-                        </Stack>
-                      )}
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
+                        {insight.audioIntelligence && (
+                          <Chip icon={<MicIcon sx={{ fontSize: 12 }} />} label={formatDuration(insight.audioIntelligence.durationMs)} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        )}
+                        {insight.pendingTranscription && (
+                          <Chip icon={<HourglassIcon sx={{ fontSize: 12 }} />} label="Transcribing" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        )}
+                        {insight.transcriptionError && (
+                          <Tooltip title={insight.transcriptionError}><Chip label="Transcription Error" size="small" color="error" sx={{ height: 20, fontSize: '0.65rem' }} /></Tooltip>
+                        )}
+                        {insight.tags.slice(0, 3).map((tag) => (
+                          <Chip key={tag} label={tag} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        ))}
+                        {insight.tags.length > 3 && (
+                          <Chip label={`+${insight.tags.length - 3}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell sx={{ maxWidth: 200 }}>
-                      {insight.aiAnalysis?.summary ? (
-                        <Tooltip
-                          title={
-                            <Box sx={{ p: 0.5 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                AI Summary
+                      {(() => {
+                        const summary = insight.aiDistillation?.summary || insight.aiAnalysis?.summary;
+                        const bullets = insight.aiDistillation?.bullets;
+                        const themes = insight.aiAnalysis?.themes;
+                        const source = insight.aiDistillation?.source;
+                        if (!summary) return <Typography variant="caption" color="text.disabled">—</Typography>;
+                        return (
+                          <Tooltip
+                            title={
+                              <Box sx={{ p: 0.5 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                  {source ? `AI Distillation (${source})` : 'AI Summary'}
+                                </Typography>
+                                <Typography variant="body2">{summary}</Typography>
+                                {bullets && bullets.length > 0 && (
+                                  <Box sx={{ mt: 1 }}>
+                                    {bullets.map((b, i) => <Typography key={i} variant="body2">- {b}</Typography>)}
+                                  </Box>
+                                )}
+                                {themes && themes.length > 0 && (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Themes: {themes.join(', ')}</Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            }
+                            arrow
+                            placement="top"
+                          >
+                            <Stack direction="row" spacing={0.5} alignItems="flex-start" sx={{ cursor: 'help' }}>
+                              <AIIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.25 }} />
+                              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                {summary.length > 60 ? `${summary.substring(0, 60)}...` : summary}
                               </Typography>
-                              <Typography variant="body2">
-                                {insight.aiAnalysis.summary}
-                              </Typography>
-                              {insight.aiAnalysis.themes && insight.aiAnalysis.themes.length > 0 && (
-                                <Box sx={{ mt: 1 }}>
-                                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                                    Themes: {insight.aiAnalysis.themes.join(', ')}
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Box>
-                          }
-                          arrow
-                          placement="top"
-                        >
-                          <Stack direction="row" spacing={0.5} alignItems="flex-start" sx={{ cursor: 'help' }}>
-                            <AIIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.25 }} />
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: 'text.secondary',
-                                fontSize: '0.8rem',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                              }}
-                            >
-                              {insight.aiAnalysis.summary.length > 60
-                                ? `${insight.aiAnalysis.summary.substring(0, 60)}...`
-                                : insight.aiAnalysis.summary}
-                            </Typography>
-                          </Stack>
-                        </Tooltip>
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">
-                          —
-                        </Typography>
-                      )}
+                            </Stack>
+                          </Tooltip>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Chip label={insight.type} size="small" />
@@ -657,12 +907,22 @@ export default function InsightsPage() {
                       transform: 'translateY(-2px)',
                       boxShadow: 4,
                     },
+                    ...(selectedIds.has(insight._id) ? { border: '2px solid', borderColor: 'primary.main', bgcolor: 'primary.50' } : {}),
                   }}
                   onClick={() => handleViewDetail(insight)}
                 >
                   <CardContent sx={{ flex: 1 }}>
-                    {/* Header: Sentiment + Type + Priority + AI + Reactions */}
+                    {/* Header: Checkbox + Sentiment + Type + Priority + AI + Reactions */}
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
+                      {canModify && (
+                        <Checkbox
+                          size="small"
+                          checked={selectedIds.has(insight._id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => toggleSelect(insight._id)}
+                          sx={{ p: 0, mr: -0.5 }}
+                        />
+                      )}
                       {getSentimentIcon(insight.sentiment)}
                       <Chip label={insight.type} size="small" />
                       <Chip
@@ -670,8 +930,8 @@ export default function InsightsPage() {
                         size="small"
                         color={priorityColors[insight.priority] || 'default'}
                       />
-                      {insight.aiAnalysis?.summary && (
-                        <Tooltip title={insight.aiAnalysis.summary}>
+                      {(insight.aiDistillation?.summary || insight.aiAnalysis?.summary) && (
+                        <Tooltip title={insight.aiDistillation?.summary || insight.aiAnalysis?.summary || ''}>
                           <Chip
                             icon={<AIIcon sx={{ fontSize: 14 }} />}
                             label="AI"
@@ -684,12 +944,23 @@ export default function InsightsPage() {
                           />
                         </Tooltip>
                       )}
+                      {insight.audioIntelligence && (
+                        <Chip icon={<MicIcon sx={{ fontSize: 14 }} />} label={formatDuration(insight.audioIntelligence.durationMs)} size="small" variant="outlined" />
+                      )}
+                      {insight.pendingTranscription && (
+                        <Chip icon={<HourglassIcon sx={{ fontSize: 14 }} />} label="Transcribing" size="small" color="warning" />
+                      )}
                       <Box sx={{ flex: 1 }} />
                       <ReactionDisplay counts={insight.reactionCounts} total={insight.reactionTotal} />
                     </Stack>
 
-                    {/* Text */}
-                    <Typography variant="body2" sx={{ mb: 2, minHeight: 60 }}>
+                    {/* Title + Text */}
+                    {insight.title && (
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        {insight.title}
+                      </Typography>
+                    )}
+                    <Typography variant="body2" sx={{ mb: 2, minHeight: insight.title ? 40 : 60, color: insight.title ? 'text.secondary' : 'text.primary' }}>
                       {insight.text.length > 200
                         ? `${insight.text.substring(0, 200)}...`
                         : insight.text}

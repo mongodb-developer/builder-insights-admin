@@ -764,6 +764,18 @@ export default function MonitoringPage() {
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('24');
   const [activeTab, setActiveTab] = useState(0);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  // Page-level admin check (defense-in-depth; middleware also blocks non-admins)
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const admin = data?.isAdmin === true || data?.role === 'admin';
+        setIsAdmin(admin);
+      })
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -789,10 +801,18 @@ export default function MonitoringPage() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  if (loading && !data) {
+  if (isAdmin === null || (loading && !data)) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (isAdmin === false) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">Admin access required to view this page.</Alert>
       </Box>
     );
   }

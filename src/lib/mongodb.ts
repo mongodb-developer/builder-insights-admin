@@ -55,6 +55,7 @@ export const collections = {
   reactions: 'reactions',
   bugs: 'bugs',
   programs: 'programs',
+  activityLog: 'activity_log',
 } as const;
 
 // Bug status types

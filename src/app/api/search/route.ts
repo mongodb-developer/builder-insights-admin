@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
         .find({
           $or: [
             { text: regex },
+            { title: regex },
+            { 'aiDistillation.summary': regex },
             { tags: regex },
             { eventName: regex },
             { productAreas: regex },
@@ -119,7 +121,7 @@ export async function GET(request: NextRequest) {
         results.push({
           _id: insight._id.toString(),
           type: 'insight',
-          title: insight.text?.substring(0, 100) + (insight.text?.length > 100 ? '...' : '') || 'No text',
+          title: insight.title || (insight.text?.substring(0, 100) + (insight.text?.length > 100 ? '...' : '')) || 'No text',
           subtitle: `${insight.type} • ${insight.sentiment} • ${insight.priority}`,
           snippet: insight.eventName 
             ? `From: ${insight.eventName}` 

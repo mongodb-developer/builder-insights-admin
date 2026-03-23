@@ -6,6 +6,7 @@
  * Shows full insight details with AI analysis in a slide-out drawer.
  */
 
+import { useState, useEffect, useCallback } from 'react';
 import {
   Drawer,
   Box,
@@ -16,6 +17,9 @@ import {
   Divider,
   Avatar,
   Button,
+  Snackbar,
+  Alert,
+  Tooltip,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -25,6 +29,11 @@ import {
   Schedule as TimeIcon,
   LocalOffer as TagIcon,
   Category as CategoryIcon,
+  Mic as MicIcon,
+  HourglassEmpty as HourglassIcon,
+  ErrorOutline as ErrorIcon,
+  AutoAwesome as AIIcon,
+  Share as ShareIcon,
 } from '@mui/icons-material';
 import { Insight } from '@/types';
 import { mongoColors } from '@/theme';
@@ -50,7 +59,61 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: '#14B8A6',
 };
 
+function formatDuration(ms?: number) {
+  if (!ms) return '';
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
 export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: Props) {
+  const [slackConfigured, setSlackConfigured] = useState(false);
+  const [slackSending, setSlackSending] = useState(false);
+  const [slackResult, setSlackResult] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
+
+  // Check once whether Slack is configured
+  useEffect(() => {
+    fetch('/api/slack/post')
+      .then((res) => res.json())
+      .then((data) => setSlackConfigured(data.configured))
+      .catch(() => setSlackConfigured(false));
+  }, []);
+
+  const handleShareToSlack = useCallback(async () => {
+    if (!insight) return;
+    setSlackSending(true);
+    setSlackResult(null);
+    try {
+      const res = await fetch('/api/slack/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: insight.type,
+          text: insight.text,
+          sentiment: insight.sentiment,
+          priority: insight.priority,
+          productAreas: insight.productAreas || [],
+          tags: insight.tags || [],
+          eventName: insight.eventName,
+          sessionTitle: insight.sessionTitle,
+          advocateName: insight.advocateName,
+          capturedAt: insight.capturedAt,
+        }),
+      });
+      if (res.ok) {
+        setSlackResult({ severity: 'success', message: 'Insight shared to Slack!' });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setSlackResult({ severity: 'error', message: data.error || 'Failed to share to Slack' });
+      }
+    } catch {
+      setSlackResult({ severity: 'error', message: 'Network error sharing to Slack' });
+    } finally {
+      setSlackSending(false);
+    }
+  }, [insight]);
+
   if (!insight) return null;
 
   return (
@@ -80,6 +143,20 @@ export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: 
           Insight Details
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {slackConfigured && (
+            <Tooltip title="Share this insight to Slack">
+              <span>
+                <Button
+                  size="small"
+                  startIcon={<ShareIcon />}
+                  onClick={handleShareToSlack}
+                  disabled={slackSending}
+                >
+                  {slackSending ? 'Sharing...' : 'Slack'}
+                </Button>
+              </span>
+            </Tooltip>
+          )}
           {onEdit && (
             <Button
               size="small"
@@ -98,7 +175,7 @@ export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: 
       {/* Content */}
       <Box sx={{ p: 3, overflowY: 'auto' }}>
         {/* Type & Priority Badges */}
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
           <Chip
             label={insight.type}
             size="small"
@@ -122,7 +199,28 @@ export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: 
               fontWeight: 600,
             }}
           />
+          {insight.audioIntelligence && (
+            <Chip
+              icon={<MicIcon sx={{ fontSize: 14 }} />}
+              label={`Audio ${formatDuration(insight.audioIntelligence.durationMs)}`}
+              size="small"
+              variant="outlined"
+            />
+          )}
+          {insight.pendingTranscription && (
+            <Chip icon={<HourglassIcon sx={{ fontSize: 14 }} />} label="Transcription Pending" size="small" color="warning" />
+          )}
+          {insight.transcriptionError && (
+            <Chip icon={<ErrorIcon sx={{ fontSize: 14 }} />} label="Transcription Error" size="small" color="error" title={insight.transcriptionError} />
+          )}
         </Stack>
+
+        {/* Title */}
+        {insight.title && (
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            {insight.title}
+          </Typography>
+        )}
 
         {/* Main Text */}
         <Typography variant="body1" sx={{ mb: 3, lineHeight: 1.7 }}>
@@ -268,9 +366,74 @@ export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: 
           </Box>
         )}
 
+        {/* AI Distillation (from mobile app) */}
+        {insight.aiDistillation && (insight.aiDistillation.summary || (insight.aiDistillation.bullets && insight.aiDistillation.bullets.length > 0)) && (
+          <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: `${mongoColors.green}08`, border: `1px solid ${mongoColors.green}20` }}>
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 1 }}>
+              <AIIcon sx={{ fontSize: 16, color: mongoColors.darkGreen }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: mongoColors.darkGreen }}>
+                AI Distillation
+                {insight.aiDistillation.source && (
+                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                    ({insight.aiDistillation.source})
+                  </Typography>
+                )}
+              </Typography>
+            </Stack>
+            {insight.aiDistillation.summary && (
+              <Typography variant="body2" sx={{ mb: 1 }}>{insight.aiDistillation.summary}</Typography>
+            )}
+            {insight.aiDistillation.bullets && insight.aiDistillation.bullets.length > 0 && (
+              <Box sx={{ ml: 1 }}>
+                {insight.aiDistillation.bullets.map((bullet, i) => (
+                  <Typography key={i} variant="body2" sx={{ mb: 0.25 }}>- {bullet}</Typography>
+                ))}
+              </Box>
+            )}
+            {insight.aiDistillation.actionItems && insight.aiDistillation.actionItems.length > 0 && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Action Items</Typography>
+                {insight.aiDistillation.actionItems.map((item, i) => (
+                  <Typography key={i} variant="body2" sx={{ mb: 0.25 }}>- {item}</Typography>
+                ))}
+              </Box>
+            )}
+            {insight.aiDistillation.keyPhrases && insight.aiDistillation.keyPhrases.length > 0 && (
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                {insight.aiDistillation.keyPhrases.map((phrase) => (
+                  <Chip key={phrase} label={phrase} size="small" variant="outlined" sx={{ height: 22, fontSize: '0.7rem' }} />
+                ))}
+              </Stack>
+            )}
+          </Box>
+        )}
+
+        {/* Audio Intelligence - Speaker Transcript */}
+        {insight.audioIntelligence && insight.audioIntelligence.segments && insight.audioIntelligence.segments.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 1 }}>
+              <MicIcon sx={{ fontSize: 16, color: mongoColors.gray[500] }} />
+              <Typography variant="subtitle2" color="text.secondary">
+                Audio Transcript ({insight.audioIntelligence.segments.length} segments
+                {insight.audioIntelligence.speakers ? `, ${insight.audioIntelligence.speakers.length} speaker${insight.audioIntelligence.speakers.length === 1 ? '' : 's'}` : ''})
+              </Typography>
+            </Stack>
+            <Box sx={{ maxHeight: 240, overflowY: 'auto', p: 1.5, borderRadius: 2, bgcolor: mongoColors.gray[100] }}>
+              {insight.audioIntelligence.segments.map((seg) => (
+                <Box key={seg.id} sx={{ mb: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: mongoColors.gray[500] }}>
+                    {seg.speakerLabel} ({Math.round(seg.startMs / 1000)}s)
+                  </Typography>
+                  <Typography variant="body2">{seg.text}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
         <Divider sx={{ my: 3 }} />
 
-        {/* AI Analysis Section */}
+        {/* AI Analysis Section (admin-side) */}
         <InsightAIAnalysis 
           insightId={insight._id} 
           initialAnalysis={insight.aiAnalysis}
@@ -304,6 +467,20 @@ export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: 
           </>
         )}
       </Box>
+
+      {/* Slack share feedback */}
+      <Snackbar
+        open={slackResult !== null}
+        autoHideDuration={4000}
+        onClose={() => setSlackResult(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {slackResult ? (
+          <Alert severity={slackResult.severity} onClose={() => setSlackResult(null)} variant="filled">
+            {slackResult.message}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </Drawer>
   );
 }

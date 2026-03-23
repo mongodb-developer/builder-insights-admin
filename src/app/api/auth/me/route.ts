@@ -11,11 +11,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
+    // Normalize: if the legacy isAdmin flag is set, treat role as admin
+    const effectiveIsAdmin = user.isAdmin || user.role === 'admin';
+    const effectiveRole = effectiveIsAdmin ? 'admin' : user.role;
+
     return NextResponse.json({
       email: user.email,
       name: user.name,
-      role: user.role,
-      isAdmin: user.isAdmin || user.role === 'admin',
+      role: effectiveRole,
+      isAdmin: effectiveIsAdmin,
     });
   } catch (error) {
     console.error('[GET /api/auth/me]', error);

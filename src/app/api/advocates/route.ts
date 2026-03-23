@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { getCollection, collections } from '@/lib/mongodb';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,21 +28,33 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/advocates - Create advocate
+// POST /api/advocates - Create advocate (requires manager or admin role)
 export async function POST(request: NextRequest) {
   try {
+    // Auth check (defense-in-depth — middleware also checks)
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (session.role !== 'admin' && session.role !== 'manager') {
+      return NextResponse.json({ error: 'Manager or admin access required' }, { status: 403 });
+    }
+
     const body = await request.json();
     const col = await getCollection(collections.advocates);
 
     const now = new Date().toISOString();
+    const role = body.role || 'advocate';
     const advocate = {
       _id: new ObjectId().toString(),
       email: body.email,
       name: body.name,
-      role: body.role || 'advocate',
-      region: body.region,
+      title: body.title || null,
+      role,
+      region: body.region || null,
+      isAdmin: role === 'admin',
       isActive: body.isActive ?? true,
-      avatarUrl: body.avatarUrl,
+      avatarUrl: body.avatarUrl || null,
       createdAt: now,
       updatedAt: now,
     };

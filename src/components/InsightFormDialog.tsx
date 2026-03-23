@@ -52,6 +52,7 @@ const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
 export interface InsightFormData {
   _id?: string;
+  title?: string;
   text: string;
   type: string;
   sentiment: string;
@@ -185,6 +186,16 @@ export default function InsightFormDialog({ open, onClose, onSave, insight, even
         )}
 
         <Stack spacing={3} sx={{ mt: 1 }}>
+          {/* Title */}
+          <TextField
+            label="Title (Optional)"
+            value={form.title || ''}
+            onChange={handleChange('title')}
+            fullWidth
+            placeholder="Brief headline for this insight"
+            size="small"
+          />
+
           {/* Insight Text */}
           <TextField
             label="Insight Text"

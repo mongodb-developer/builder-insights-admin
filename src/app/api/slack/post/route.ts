@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isSlackConfigured, postToSlack } from '@/lib/slack';
 
 export const dynamic = 'force-dynamic';
-
-const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || '';
 
 interface SlackInsight {
   type: string;
@@ -18,29 +17,76 @@ interface SlackInsight {
   capturedAt: string;
 }
 
+/** Validate that the request body has the required fields with correct types. */
+function validateInsight(body: unknown): { valid: true; data: SlackInsight } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Request body must be a JSON object' };
+  }
+
+  const b = body as Record<string, unknown>;
+
+  const requiredStrings = ['type', 'text', 'sentiment', 'priority', 'advocateName', 'capturedAt'] as const;
+  for (const field of requiredStrings) {
+    if (typeof b[field] !== 'string' || (b[field] as string).trim() === '') {
+      return { valid: false, error: `Missing or invalid required field: ${field}` };
+    }
+  }
+
+  const requiredArrays = ['productAreas', 'tags'] as const;
+  for (const field of requiredArrays) {
+    if (!Array.isArray(b[field])) {
+      return { valid: false, error: `Missing or invalid required field: ${field} (must be an array)` };
+    }
+  }
+
+  return { valid: true, data: body as SlackInsight };
+}
+
 /**
  * POST /api/slack/post - Post an insight to Slack
  */
 export async function POST(request: NextRequest) {
-  if (!SLACK_WEBHOOK_URL) {
+  if (!isSlackConfigured()) {
     return NextResponse.json(
       { error: 'Slack webhook not configured' },
       { status: 503 }
     );
   }
 
+  // Parse and validate request body
+  let body: unknown;
   try {
-    const insight: SlackInsight = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid JSON in request body' },
+      { status: 400 }
+    );
+  }
 
+  const result = validateInsight(body);
+  if (!result.valid) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
+
+  const insight = result.data;
+
+  try {
     // Build Slack message with blocks for rich formatting
-    const sentimentEmoji = 
+    const sentimentEmoji =
       insight.sentiment === 'Positive' ? '😊' :
       insight.sentiment === 'Negative' ? '😟' : '😐';
-    
+
     const priorityEmoji =
       insight.priority === 'Critical' ? '🔴' :
       insight.priority === 'High' ? '🟠' :
       insight.priority === 'Medium' ? '🟡' : '⚪';
+
+    const capturedDate = new Date(insight.capturedAt);
+    const formattedDate = capturedDate.toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
 
     const slackMessage = {
       blocks: [
@@ -103,31 +149,34 @@ export async function POST(request: NextRequest) {
           elements: [
             {
               type: 'mrkdwn',
-              text: `_Captured ${new Date(insight.capturedAt).toLocaleString()}_`,
+              text: `_Captured ${formattedDate}_`,
             },
           ],
         },
       ],
     };
 
-    // Post to Slack
-    const response = await fetch(SLACK_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(slackMessage),
-    });
+    // Post to Slack with timeout
+    const response = await postToSlack(slackMessage);
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Slack webhook error:', error);
+      const errorText = await response.text();
+      console.error('Slack webhook error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to post to Slack' },
+        { error: 'Failed to post to Slack', detail: errorText },
         { status: 502 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.error('Slack webhook timed out');
+      return NextResponse.json(
+        { error: 'Slack webhook request timed out' },
+        { status: 504 }
+      );
+    }
     console.error('Slack post error:', error);
     return NextResponse.json(
       { error: 'Failed to post to Slack' },
@@ -141,6 +190,6 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   return NextResponse.json({
-    configured: Boolean(SLACK_WEBHOOK_URL),
+    configured: isSlackConfigured(),
   });
 }

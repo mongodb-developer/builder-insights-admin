@@ -904,27 +904,25 @@ export function prepareProgramUpdate(input: unknown, existing: ProgramRecord, up
   };
 }
 
-export function extractProgramParticipants(program: ProgramRecord): ProgramParticipant[] {
+/**
+ * Build program participants from the advocates (users) collection.
+ * Each active advocate becomes an assignable / mentionable participant.
+ */
+export function extractProgramParticipants(
+  advocates: Array<{ name?: string; email: string; role?: string; title?: string | null; isActive?: boolean }>
+): ProgramParticipant[] {
   const map = new Map<string, ProgramParticipant>();
 
-  for (const stakeholder of program.stakeholders) {
-    const email = stakeholder.audit.updatedByEmail || stakeholder.audit.createdByEmail;
+  for (const advocate of advocates) {
+    if (advocate.isActive === false) continue;
+    const email = advocate.email?.trim();
     if (!email) continue;
+    const name = advocate.name?.trim() || email.split('@')[0] || email;
     map.set(email.toLowerCase(), {
-      name: stakeholder.name,
+      name,
       email,
-      role: stakeholder.role,
-      handle: buildParticipantHandle({ name: stakeholder.name, email }),
-    });
-  }
-
-  if (program.updatedBy && program.updatedBy.includes('@')) {
-    const email = program.updatedBy;
-    map.set(email.toLowerCase(), {
-      name: program.updatedBy,
-      email,
-      role: 'Program Owner',
-      handle: buildParticipantHandle({ name: program.updatedBy, email }),
+      role: advocate.title || advocate.role || 'Team Member',
+      handle: buildParticipantHandle({ name, email }),
     });
   }
 

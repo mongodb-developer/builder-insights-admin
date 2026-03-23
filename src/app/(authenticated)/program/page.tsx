@@ -11,6 +11,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   Grid,
   IconButton,
@@ -27,6 +28,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
@@ -41,7 +43,8 @@ import {
   DeleteOutline,
   Description,
   Download,
-  Print,
+  ExpandLess,
+  ExpandMore,
   Flag,
   Groups,
   Insights,
@@ -197,7 +200,9 @@ export default function ProgramPage() {
   const [notifications, setNotifications] = useState<MentionNotification[]>([]);
   const [draggedChecklist, setDraggedChecklist] = useState<{ workstreamId: string; itemId: string } | null>(null);
   const [selectedChecklistIds, setSelectedChecklistIds] = useState<string[]>([]);
-  const [printMode, setPrintMode] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [showExports, setShowExports] = useState(false);
+  const [infoDismissed, setInfoDismissed] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -228,23 +233,8 @@ export default function ProgramPage() {
 
   const canEdit = user?.role === 'admin' || user?.role === 'manager';
   const commentUser = useMemo(() => (user ? { name: user.name, email: user.email } : null), [user]);
-  const availableParticipants = useMemo(() => {
-    if (!commentUser) return participants;
-
-    if (participants.some((participant) => participant.email.toLowerCase() === commentUser.email.toLowerCase())) {
-      return participants;
-    }
-
-    return [
-      ...participants,
-      {
-        name: commentUser.name,
-        email: commentUser.email,
-        role: user?.role || 'manager',
-        handle: `@${commentUser.email.split('@')[0].toLowerCase()}`,
-      },
-    ];
-  }, [participants, commentUser, user?.role]);
+  // Participants now come from the advocates (users) table via the API -- no client-side injection needed
+  const availableParticipants = participants;
 
   const metrics = useMemo(() => {
     if (!draft) return null;
@@ -447,6 +437,57 @@ export default function ProgramPage() {
         workstream.id === workstreamId ? { ...workstream, ...changes } : workstream
       ),
     }));
+  }
+
+  function addWorkstream() {
+    const actorName = user?.name || 'Owner';
+    const actorEmail = user?.email || '';
+
+    updateDraft((current) => ({
+      ...current,
+      workstreams: [
+        ...current.workstreams,
+        {
+          id: makeId('workstream'),
+          title: 'New workstream',
+          repoId: current.repos[0]?.id || '',
+          owner: user?.name || 'Owner',
+          stage: 'build',
+          status: 'not_started',
+          health: 'on_track',
+          completion: 0,
+          targetDate: new Date().toISOString().slice(0, 10),
+          summary: 'Describe the scope and goals of this workstream.',
+          stakeholders: [],
+          notes: '',
+          checklist: [],
+          comments: [],
+          references: [],
+          audit: createProgramAudit(actorName, actorEmail, 'Created workstream New workstream.'),
+        },
+      ],
+    }));
+  }
+
+  function removeWorkstream(workstreamId: string) {
+    updateDraft((current) => ({
+      ...current,
+      workstreams: current.workstreams.filter((workstream) => workstream.id !== workstreamId),
+    }));
+  }
+
+  function moveWorkstream(workstreamId: string, direction: 'up' | 'down') {
+    updateDraft((current) => {
+      const index = current.workstreams.findIndex((workstream) => workstream.id === workstreamId);
+      const nextIndex = direction === 'up' ? index - 1 : index + 1;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.workstreams.length) return current;
+
+      const nextWorkstreams = [...current.workstreams];
+      const [moved] = nextWorkstreams.splice(index, 1);
+      nextWorkstreams.splice(nextIndex, 0, moved);
+      return { ...current, workstreams: nextWorkstreams };
+    });
   }
 
   function resequenceChecklist(items: ProgramRecord['workstreams'][number]['checklist']) {
@@ -808,21 +849,8 @@ export default function ProgramPage() {
     const res = await fetch('/api/program', { method: 'PATCH' });
     if (!res.ok) return;
     const json = await res.json();
-    const nextParticipants = json.participants || [];
-    setParticipants(nextParticipants);
+    setParticipants(json.participants || []);
     setNotifications(json.notifications || []);
-
-    if (commentUser && !nextParticipants.some((participant: ProgramParticipantView) => participant.email.toLowerCase() === commentUser.email.toLowerCase())) {
-      setParticipants((current) => [
-        ...current,
-        {
-          name: commentUser.name,
-          email: commentUser.email,
-          role: user?.role || 'manager',
-          handle: `@${commentUser.email.split('@')[0].toLowerCase()}`,
-        },
-      ]);
-    }
   }
 
   async function persistComment(entityType: 'workstream' | 'task' | 'stakeholder' | 'decision' | 'risk', entityId: string, text: string, parentId?: string) {
@@ -920,10 +948,7 @@ export default function ProgramPage() {
     setMessage('Weekly snapshot added to the program record. Save Program to persist it.');
   }
 
-  function togglePrintMode() {
-    setPrintMode((current) => !current);
-    setMessage(printMode ? 'Exited leadership print mode.' : 'Leadership print mode enabled.');
-  }
+
 
   if (loading) {
     return (
@@ -943,481 +968,273 @@ export default function ProgramPage() {
   }
 
   return (
-    <Box sx={printMode ? { '@media print': { '& .program-editor-only': { display: 'none !important' } } } : undefined}>
+    <Box sx={{ '@media print': { '& .program-editor-only': { display: 'none !important' } } }}>
       <PageHelp page="program" onOpenDrawer={() => openHelp('program-rollout')} />
 
+      {/* ── Compact Hero ── */}
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 2.5, md: 3.5 },
-          mb: 3,
+          px: { xs: 2, md: 3 },
+          py: { xs: 2, md: 2.5 },
+          mb: 2,
           borderRadius: 4,
           border: `1px solid ${alpha(mongoColors.darkGreen, 0.14)}`,
-          background: `radial-gradient(circle at top left, ${alpha(mongoColors.green, 0.22)} 0%, ${alpha('#D6F5E5', 0.55)} 32%, ${mongoColors.white} 100%)`,
+          background: `radial-gradient(circle at top left, ${alpha(mongoColors.green, 0.18)} 0%, ${alpha('#D6F5E5', 0.4)} 28%, ${mongoColors.white} 100%)`,
         }}
       >
-        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} justifyContent="space-between">
-          <Box sx={{ maxWidth: 900 }}>
-            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 1.5 }}>
-              <Chip label="Program Management" sx={{ bgcolor: alpha(mongoColors.black, 0.08), color: mongoColors.black, fontWeight: 700 }} />
-              <Chip label={PROGRAM_HEALTH_LABELS[draft.health]} sx={{ bgcolor: alpha(getHealthColor(draft.health), 0.14), color: getHealthColor(draft.health), fontWeight: 700 }} />
-            </Stack>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>{draft.name}</Typography>
-              <HelpButton topic="program-rollout" onOpenDrawer={openHelp} />
-            </Stack>
-            <Typography variant="body1" sx={{ mt: 1.5, maxWidth: 860, color: 'text.secondary' }}>{draft.objective}</Typography>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 2.5 }}>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>Launch Window</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>{draft.launchWindow}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>Operating Cadence</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>{draft.operatingCadence}</Typography>
-              </Box>
-            </Stack>
-          </Box>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ md: 'center' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>{draft.name}</Typography>
+            <HelpButton topic="program-rollout" onOpenDrawer={openHelp} />
+            {canEdit ? (
+              <TextField
+                select
+                size="small"
+                value={draft.health}
+                onChange={(event) => updateDraft((current) => ({ ...current, health: event.target.value as ProgramRecord['health'] }))}
+                sx={{ minWidth: 130 }}
+              >
+                {Object.entries(PROGRAM_HEALTH_LABELS).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>{label}</MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <Chip label={PROGRAM_HEALTH_LABELS[draft.health]} size="small" sx={{ bgcolor: alpha(getHealthColor(draft.health), 0.14), color: getHealthColor(draft.health), fontWeight: 700 }} />
+            )}
+          </Stack>
 
-          <Box sx={{ minWidth: { lg: 280 } }}>
-            <TextField
-              select
-              fullWidth
-              size="small"
-              label="Overall Health"
-              value={draft.health}
-              onChange={(event) => updateDraft((current) => ({ ...current, health: event.target.value as ProgramRecord['health'] }))}
-              disabled={!canEdit}
-            >
-              {Object.entries(PROGRAM_HEALTH_LABELS).map(([value, label]) => (
-                <MenuItem key={value} value={value}>{label}</MenuItem>
-              ))}
-            </TextField>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography variant="caption" sx={{ color: isDirty ? 'warning.main' : 'text.secondary', whiteSpace: 'nowrap' }}>
+              {isDirty ? 'Unsaved changes' : `Saved ${new Date(draft.updatedAt).toLocaleDateString()}`}
+            </Typography>
             <Button
               className="program-editor-only"
-              sx={{ mt: 1.5 }}
-              fullWidth
+              size="small"
               variant="contained"
-              startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <Save />}
+              startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <Save />}
               onClick={handleSave}
               disabled={!canEdit || saving || !isDirty}
             >
-              {saving ? 'Saving...' : 'Save Program'}
+              {saving ? 'Saving...' : 'Save'}
             </Button>
-            <Stack className="program-editor-only" direction="row" spacing={1} sx={{ mt: 1.25 }}>
-              <Button size="small" variant="outlined" startIcon={<Print />} onClick={togglePrintMode}>
-                {printMode ? 'Exit Print Mode' : 'Print Mode'}
-              </Button>
-              <Button size="small" variant="outlined" onClick={saveSnapshot}>
-                Save Snapshot
-              </Button>
-            </Stack>
-            <Typography variant="caption" sx={{ display: 'block', mt: 1.25, color: isDirty ? 'warning.main' : 'text.secondary' }}>
-              {isDirty ? 'You have unsaved changes.' : 'Everything is saved.'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.25 }}>
-              Updated by {draft.updatedBy} on {new Date(draft.updatedAt).toLocaleString()}
-            </Typography>
-          </Box>
+            <Button className="program-editor-only" size="small" variant="outlined" onClick={saveSnapshot}>Snapshot</Button>
+          </Stack>
         </Stack>
       </Paper>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-      {message && <Alert severity="success" sx={{ mb: 3 }}>{message}</Alert>}
-      {!canEdit && <Alert severity="info" sx={{ mb: 3 }}>You have read-only access. Managers and admins can update records, save changes, and post threaded updates.</Alert>}
-      {canEdit && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Update fields inline, add comments directly on each record, then click Save Program to persist everything.
-        </Alert>
-      )}
+      {/* ── Alerts (conditional only) ── */}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {message && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage('')}>{message}</Alert>}
+      {!infoDismissed && !canEdit && <Alert severity="info" sx={{ mb: 2 }} onClose={() => setInfoDismissed(true)}>Read-only access. Managers and admins can edit records and post updates.</Alert>}
 
-      <Card className="program-editor-only" sx={{ mb: 3, border: `1px solid ${alpha('#016BF8', 0.18)}` }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', lg: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>Mentions Inbox</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Use `@handle` mentions in comments to direct action requests and decision follow-ups to specific teammates.
-              </Typography>
-            </Box>
-            <Chip icon={<AlternateEmail />} label={`${notifications.length} mention${notifications.length === 1 ? '' : 's'}`} color="primary" variant="outlined" />
-          </Stack>
-          <Stack spacing={1.25}>
-            {notifications.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">No active mentions for your account.</Typography>
-            ) : (
-              notifications.slice(0, 6).map((notification) => (
-                <Box key={notification.id} sx={{ p: 1.5, borderRadius: 3, bgcolor: alpha('#016BF8', 0.05), border: `1px solid ${alpha('#016BF8', 0.15)}` }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-                    <Box>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                        <Chip label={notification.entityType} size="small" variant="outlined" />
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{notification.entityLabel}</Typography>
-                      </Stack>
-                      <Typography variant="body2">{notification.authorName} mentioned {notification.mentionedAs}</Typography>
-                      <Typography variant="caption" color="text.secondary">{notification.message}</Typography>
-                    </Box>
-                    <Chip label={new Date(notification.createdAt).toLocaleString()} size="small" sx={{ width: 'fit-content' }} />
-                  </Stack>
-                </Box>
-              ))
-            )}
-          </Stack>
-        </CardContent>
-      </Card>
-
-      <Grid className="program-editor-only" container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <StatCard icon={<AutoGraph />} label="Average Readiness" value={`${metrics.avgCompletion}%`} detail="Average completion across all workstreams" color={mongoColors.darkGreen} />
+      {/* ── Stat Cards (compact inline row) ── */}
+      <Grid className="program-editor-only" container spacing={2} sx={{ mb: 2 }}>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <StatCard icon={<AutoGraph />} label="Readiness" value={`${metrics.avgCompletion}%`} detail="Avg completion" color={mongoColors.darkGreen} />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <StatCard icon={<Sync />} label="Blocked Tasks" value={metrics.blockedTasks} detail="Active tasks currently blocked" color="#DB3030" />
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <StatCard icon={<Sync />} label="Blocked" value={metrics.blockedTasks} detail="Blocked tasks" color="#DB3030" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <StatCard icon={<Flag />} label="Pending Decisions" value={metrics.pendingDecisions} detail="Leadership or cross-team calls still open" color="#F59E0B" />
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <StatCard icon={<Flag />} label="Decisions" value={metrics.pendingDecisions} detail="Pending decisions" color="#F59E0B" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <StatCard icon={<WarningAmber />} label="Open Risks" value={metrics.openRisks} detail="Risks still needing mitigation or closure" color="#016BF8" />
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <StatCard icon={<WarningAmber />} label="Risks" value={metrics.openRisks} detail="Open risks" color="#016BF8" />
         </Grid>
       </Grid>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Checklist Readiness</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip label={`${checklistMetrics.total} total`} />
-                <Chip label={`${checklistMetrics.overdue} overdue`} color={checklistMetrics.overdue ? 'error' : 'default'} />
-                <Chip label={`${checklistMetrics.blocked} blocked`} color={checklistMetrics.blocked ? 'warning' : 'default'} />
-                <Chip label={`${selectedChecklistIds.length} selected`} color={selectedChecklistIds.length ? 'info' : 'default'} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>Checklist Filters</Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Saved View"
-                    value={savedView}
-                    onChange={(event) => setSavedView(event.target.value)}
-                  >
-                    <MenuItem value="all">All Work</MenuItem>
-                    <MenuItem value="launch_blockers">Launch Blockers</MenuItem>
-                    <MenuItem value="overdue_work">Overdue Work</MenuItem>
-                    <MenuItem value="needs_decision">Needs Decision</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Assignee"
-                    value={checklistAssigneeFilter}
-                    onChange={(event) => setChecklistAssigneeFilter(event.target.value)}
-                  >
-                    <MenuItem value="all">All assignees</MenuItem>
-                    {checklistFilters.map((assignee) => (
-                      <MenuItem key={assignee} value={assignee}>{assignee}</MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Status"
-                    value={checklistStatusFilter}
-                    onChange={(event) => setChecklistStatusFilter(event.target.value)}
-                  >
-                    <MenuItem value="all">All statuses</MenuItem>
-                    <MenuItem value="overdue">Overdue</MenuItem>
-                    {Object.entries(PROGRAM_STATUS_LABELS).map(([value, label]) => (
-                      <MenuItem key={value} value={value}>{label}</MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-              </Grid>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-                {savedViewDescription}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {canEdit && selectedChecklistIds.length > 0 && (
-        <Card className="program-editor-only" sx={{ mb: 3, border: `1px solid ${alpha(mongoColors.darkGreen, 0.16)}` }}>
-          <CardContent>
-            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} alignItems={{ md: 'center' }}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>Bulk Checklist Actions</Typography>
-                <Typography variant="body2" color="text.secondary">Apply updates to the selected checklist items across workstreams.</Typography>
+      {/* ── My Dashboard (promoted to top) ── */}
+      {(myChecklistActions.length > 0 || myTaskActions.length > 0) && (
+        <Card className="program-editor-only" sx={{ mb: 2 }}>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>My Checklist ({myChecklistActions.length})</Typography>
+                <Stack spacing={0.5}>
+                  {myChecklistActions.slice(0, 3).map((item) => (
+                    <Stack key={item.id} direction="row" spacing={1} alignItems="baseline">
+                      <Typography variant="body2" noWrap sx={{ fontWeight: 600, flex: 1 }}>{item.label}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{item.dueDate ? formatDate(item.dueDate) : ''}</Typography>
+                    </Stack>
+                  ))}
+                  {myChecklistActions.length > 3 && <Typography variant="caption" color="text.secondary">+{myChecklistActions.length - 3} more</Typography>}
+                </Stack>
               </Box>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ status: 'in_progress' })}>Mark In Progress</Button>
-                <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ status: 'blocked' })}>Mark Blocked</Button>
-                <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ status: 'complete' })}>Mark Complete</Button>
-                <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ assigneeEmail: user?.email || '', owner: user?.name || 'Owner' })}>Assign To Me</Button>
-                <Button size="small" color="inherit" onClick={() => setSelectedChecklistIds([])}>Clear Selection</Button>
-              </Stack>
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>My Tasks ({myTaskActions.length})</Typography>
+                <Stack spacing={0.5}>
+                  {myTaskActions.slice(0, 3).map((task) => (
+                    <Stack key={task.id} direction="row" spacing={1} alignItems="baseline">
+                      <Typography variant="body2" noWrap sx={{ fontWeight: 600, flex: 1 }}>{task.title}</Typography>
+                      <Chip label={PROGRAM_STATUS_LABELS[task.status]} size="small" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    </Stack>
+                  ))}
+                  {myTaskActions.length > 3 && <Typography variant="caption" color="text.secondary">+{myTaskActions.length - 3} more</Typography>}
+                </Stack>
+              </Box>
             </Stack>
           </CardContent>
         </Card>
       )}
 
-      <Grid className="program-editor-only" container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Weekly Review Export</Typography>
-                  <Typography variant="body2" color="text.secondary">Generate a leadership-ready rollout snapshot for status reviews and PMO reporting.</Typography>
-                </Box>
-                <Stack direction="row" spacing={1}>
-                  <Button size="small" variant="outlined" startIcon={<ContentCopy />} onClick={() => void copyWeeklyReport()}>
-                    Copy
-                  </Button>
-                  <Button size="small" variant="contained" startIcon={<Download />} onClick={exportWeeklyReport}>
-                    Export MD
-                  </Button>
-                  <Button size="small" variant="outlined" startIcon={<Download />} onClick={exportProgramJson}>
-                    Export JSON
-                  </Button>
+      {/* ── Mentions (only when there are mentions) ── */}
+      {notifications.length > 0 && (
+        <Card className="program-editor-only" sx={{ mb: 2, border: `1px solid ${alpha('#016BF8', 0.15)}` }}>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <AlternateEmail sx={{ fontSize: 18, color: '#016BF8' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Mentions</Typography>
+                <Chip label={notifications.length} size="small" color="primary" sx={{ height: 20 }} />
+              </Stack>
+            </Stack>
+            <Stack spacing={0.75}>
+              {notifications.slice(0, 3).map((notification) => (
+                <Stack key={notification.id} direction="row" spacing={1} alignItems="baseline" sx={{ py: 0.5, px: 1, borderRadius: 2, bgcolor: alpha('#016BF8', 0.04) }}>
+                  <Chip label={notification.entityType} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                  <Typography variant="body2" noWrap sx={{ fontWeight: 600, flex: 1 }}>{notification.entityLabel}</Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>{notification.authorName}: {notification.message.slice(0, 60)}{notification.message.length > 60 ? '...' : ''}</Typography>
                 </Stack>
-              </Stack>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-                <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => exportCsv('program-tasks.csv', csvExports.tasks)}>
-                  Tasks CSV
-                </Button>
-                <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => exportCsv('program-checklist.csv', csvExports.checklist)}>
-                  Checklist CSV
-                </Button>
-                <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => exportCsv('program-decisions.csv', csvExports.decisions)}>
-                  Decisions CSV
-                </Button>
-                <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => exportCsv('program-risks.csv', csvExports.risks)}>
-                  Risks CSV
-                </Button>
-              </Stack>
-              <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha(mongoColors.black, 0.03), border: `1px solid ${mongoColors.gray[200]}`, maxHeight: 280, overflow: 'auto' }}>
-                <Typography component="pre" sx={{ m: 0, fontSize: 12, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                  {weeklyReport}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>My Dashboard</Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha(mongoColors.green, 0.06), border: `1px solid ${alpha(mongoColors.green, 0.18)}` }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>My Checklist Actions</Typography>
-                    <Stack spacing={1}>
-                      {myChecklistActions.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary">No open checklist items assigned to you.</Typography>
-                      ) : (
-                        myChecklistActions.slice(0, 6).map((item) => (
-                          <Box key={item.id}>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{item.label}</Typography>
-                            <Typography variant="caption" color="text.secondary">{item.workstreamTitle}{item.dueDate ? ` · Due ${formatDate(item.dueDate)}` : ''}</Typography>
-                          </Box>
-                        ))
-                      )}
-                    </Stack>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha('#016BF8', 0.05), border: `1px solid ${alpha('#016BF8', 0.16)}` }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>My Launch Tasks</Typography>
-                    <Stack spacing={1}>
-                      {myTaskActions.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary">No open launch tasks assigned to you.</Typography>
-                      ) : (
-                        myTaskActions.slice(0, 6).map((task) => (
-                          <Box key={task.id}>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{task.title}</Typography>
-                            <Typography variant="caption" color="text.secondary">{PROGRAM_STATUS_LABELS[task.status]} · Due {formatDate(task.dueDate)}</Typography>
-                          </Box>
-                        ))
-                      )}
-                    </Stack>
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {(draft.snapshots?.length || 0) > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Saved Weekly Snapshots</Typography>
-            <Grid container spacing={2}>
-              {(draft.snapshots || []).map((snapshot) => (
-                <Grid key={snapshot.id} size={{ xs: 12, md: 6, xl: 4 }}>
-                  <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'background.default', border: `1px solid ${mongoColors.gray[200]}` }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{snapshot.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(snapshot.createdAt).toLocaleString()} · {snapshot.createdBy}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>{snapshot.summary}</Typography>
-                    <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" startIcon={<ContentCopy />} onClick={() => { void navigator.clipboard.writeText(snapshot.markdownReport); setMessage('Snapshot report copied to clipboard.'); }}>
-                        Copy
-                      </Button>
-                      <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => { downloadTextFile(`${snapshot.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`, snapshot.markdownReport, 'text/markdown'); setMessage('Snapshot report exported.'); }}>
-                        Export
-                      </Button>
-                    </Stack>
-                  </Box>
-                </Grid>
               ))}
-            </Grid>
+              {notifications.length > 3 && <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>+{notifications.length - 3} more mentions</Typography>}
+            </Stack>
           </CardContent>
         </Card>
       )}
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Program Charter</Typography>
-          <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Objective"
-                value={draft.objective}
-                onChange={(event) => updateDraft((current) => ({ ...current, objective: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Launch Window"
-                value={draft.launchWindow}
-                onChange={(event) => updateDraft((current) => ({ ...current, launchWindow: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Operating Cadence"
-                value={draft.operatingCadence}
-                onChange={(event) => updateDraft((current) => ({ ...current, operatingCadence: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* ── Collapsible: Program Details (Charter, Success Measures, Repos, Exports, Snapshots, Activity) ── */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1, '&:last-child': { pb: showDetails ? 2 : 1 } }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            onClick={() => setShowDetails(!showDetails)}
+            sx={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Description sx={{ fontSize: 18, color: mongoColors.gray[500] }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Program Details</Typography>
+              <Typography variant="caption" color="text.secondary">Charter, success measures, repos, exports, activity</Typography>
+            </Stack>
+            {showDetails ? <ExpandLess /> : <ExpandMore />}
+          </Stack>
+          <Collapse in={showDetails}>
+            <Stack spacing={3} sx={{ mt: 2 }}>
+              {/* Charter */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>Program Charter</Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12 }}>
+                    <TextField fullWidth multiline minRows={2} size="small" label="Objective" value={draft.objective} onChange={(event) => updateDraft((current) => ({ ...current, objective: event.target.value }))} disabled={!canEdit} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField fullWidth size="small" label="Launch Window" value={draft.launchWindow} onChange={(event) => updateDraft((current) => ({ ...current, launchWindow: event.target.value }))} disabled={!canEdit} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField fullWidth size="small" label="Operating Cadence" value={draft.operatingCadence} onChange={(event) => updateDraft((current) => ({ ...current, operatingCadence: event.target.value }))} disabled={!canEdit} />
+                  </Grid>
+                </Grid>
+              </Box>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>Program Success Measures</Typography>
-                {canEdit && (
-                  <Button size="small" startIcon={<AddCircleOutline />} onClick={addSuccessMeasure}>
-                    Add Measure
-                  </Button>
-                )}
-              </Stack>
-              <Grid container spacing={2}>
-                {draft.successMeasures.map((measure, index) => (
-                  <Grid key={`${measure}-${index}`} size={{ xs: 12, md: 6 }}>
-                    <Box sx={{ display: 'flex', gap: 1.5, p: 2, height: '100%', borderRadius: 3, bgcolor: alpha(mongoColors.green, 0.07), border: `1px solid ${alpha(mongoColors.green, 0.18)}` }}>
-                      <CheckCircle sx={{ color: mongoColors.darkGreen, mt: 0.25 }} />
+              {/* Success Measures */}
+              <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Success Measures</Typography>
+                  {canEdit && <Button size="small" startIcon={<AddCircleOutline />} onClick={addSuccessMeasure}>Add</Button>}
+                </Stack>
+                <Stack spacing={1}>
+                  {draft.successMeasures.map((measure, index) => (
+                    <Stack key={`${measure}-${index}`} direction="row" spacing={1} alignItems="center">
+                      <CheckCircle sx={{ color: mongoColors.darkGreen, fontSize: 18 }} />
                       {canEdit ? (
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={measure}
-                          onChange={(event) => updateSuccessMeasure(index, event.target.value)}
-                        />
+                        <TextField fullWidth size="small" value={measure} onChange={(event) => updateSuccessMeasure(index, event.target.value)} />
                       ) : (
                         <Typography variant="body2">{measure}</Typography>
                       )}
-                      {canEdit && (
-                        <IconButton size="small" color="error" onClick={() => removeSuccessMeasure(index)}>
-                          <DeleteOutline fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Repos In Scope</Typography>
-              <Stack spacing={1.5}>
-                {repoCounts.map(({ repo, count, blocked }) => (
-                  <Box key={repo.id} sx={{ p: 1.75, borderRadius: 3, bgcolor: 'background.default', border: `1px solid ${mongoColors.gray[200]}` }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{repo.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">{PROGRAM_REPO_AREA_LABELS[repo.area]} repo</Typography>
-                      </Box>
-                      <Chip label={`${count} tasks`} size="small" />
+                      {canEdit && <IconButton size="small" color="error" onClick={() => removeSuccessMeasure(index)}><DeleteOutline fontSize="small" /></IconButton>}
                     </Stack>
-                    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: blocked > 0 ? 'error.main' : 'text.secondary' }}>
-                      {blocked > 0 ? `${blocked} blocked items need escalation` : 'No blocked tasks right now'}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                  ))}
+                </Stack>
+              </Box>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Recent Program Activity</Typography>
-          <Grid container spacing={2}>
-            {recentActivity.map((entry) => (
-              <Grid key={`${entry.entityType}-${entry.entityLabel}-${entry.id}`} size={{ xs: 12, md: 6 }}>
-                <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'background.default', border: `1px solid ${mongoColors.gray[200]}` }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-                    <Box>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                        <Chip label={entry.entityType} size="small" variant="outlined" />
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{entry.entityLabel}</Typography>
+              {/* Repos */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Repos In Scope</Typography>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                  {repoCounts.map(({ repo, count, blocked }) => (
+                    <Chip
+                      key={repo.id}
+                      label={`${repo.name} (${PROGRAM_REPO_AREA_LABELS[repo.area]}) · ${count} tasks${blocked > 0 ? ` · ${blocked} blocked` : ''}`}
+                      size="small"
+                      variant="outlined"
+                      sx={blocked > 0 ? { borderColor: '#DB3030', color: '#DB3030' } : {}}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+
+              {/* Exports */}
+              <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Exports</Typography>
+                  <Button size="small" onClick={() => setShowExports(!showExports)} endIcon={showExports ? <ExpandLess /> : <ExpandMore />}>
+                    {showExports ? 'Hide' : 'Show'} options
+                  </Button>
+                </Stack>
+                <Collapse in={showExports}>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button size="small" variant="outlined" startIcon={<ContentCopy />} onClick={() => void copyWeeklyReport()}>Copy Report</Button>
+                    <Button size="small" variant="outlined" startIcon={<Download />} onClick={exportWeeklyReport}>Export MD</Button>
+                    <Button size="small" variant="outlined" startIcon={<Download />} onClick={exportProgramJson}>Export JSON</Button>
+                    <Button size="small" variant="outlined" onClick={() => exportCsv('program-tasks.csv', csvExports.tasks)}>Tasks CSV</Button>
+                    <Button size="small" variant="outlined" onClick={() => exportCsv('program-checklist.csv', csvExports.checklist)}>Checklist CSV</Button>
+                    <Button size="small" variant="outlined" onClick={() => exportCsv('program-decisions.csv', csvExports.decisions)}>Decisions CSV</Button>
+                    <Button size="small" variant="outlined" onClick={() => exportCsv('program-risks.csv', csvExports.risks)}>Risks CSV</Button>
+                  </Stack>
+                </Collapse>
+              </Box>
+
+              {/* Snapshots */}
+              {(draft.snapshots?.length || 0) > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Saved Snapshots</Typography>
+                  <Stack spacing={1}>
+                    {(draft.snapshots || []).map((snapshot) => (
+                      <Stack key={snapshot.id} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.75, px: 1.5, borderRadius: 2, bgcolor: 'background.default', border: `1px solid ${mongoColors.gray[200]}` }}>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{snapshot.name}</Typography>
+                          <Typography variant="caption" color="text.secondary">{new Date(snapshot.createdAt).toLocaleString()} · {snapshot.createdBy}</Typography>
+                        </Box>
+                        <Stack direction="row" spacing={0.5}>
+                          <Button size="small" onClick={() => { void navigator.clipboard.writeText(snapshot.markdownReport); setMessage('Copied.'); }}>Copy</Button>
+                          <Button size="small" onClick={() => { downloadTextFile(`${snapshot.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`, snapshot.markdownReport, 'text/markdown'); }}>Export</Button>
+                        </Stack>
                       </Stack>
-                      <Typography variant="body2">{entry.summary}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {entry.actorName} · {entry.actorEmail}
-                      </Typography>
-                    </Box>
-                    <Chip label={new Date(entry.createdAt).toLocaleString()} size="small" sx={{ width: 'fit-content' }} />
+                    ))}
                   </Stack>
                 </Box>
-              </Grid>
-            ))}
-          </Grid>
+              )}
+
+              {/* Recent Activity */}
+              {recentActivity.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Recent Activity</Typography>
+                  <Stack spacing={0.5}>
+                    {recentActivity.slice(0, 5).map((entry) => (
+                      <Stack key={`${entry.entityType}-${entry.entityLabel}-${entry.id}`} direction="row" spacing={1} alignItems="baseline" sx={{ py: 0.5, px: 1, borderRadius: 2, bgcolor: 'background.default' }}>
+                        <Chip label={entry.entityType} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                        <Typography variant="body2" noWrap sx={{ fontWeight: 600, flex: 1 }}>{entry.entityLabel}: {entry.summary}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{entry.actorName}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          </Collapse>
         </CardContent>
       </Card>
 
@@ -1427,12 +1244,55 @@ export default function ProgramPage() {
           <Tab label="Launch Tasks" />
           <Tab label="Stakeholders" />
           <Tab label="Decisions & Risks" />
+          <Tab label="Timeline" />
+          <Tab label="By Assignee" />
         </Tabs>
       </Box>
 
       <TabPanel value={tab} index={0}>
+        {/* Checklist filters (scoped to this tab) */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} sx={{ mb: 2 }}>
+          <TextField select size="small" label="View" value={savedView} onChange={(event) => setSavedView(event.target.value)} sx={{ minWidth: 160 }}>
+            <MenuItem value="all">All Work</MenuItem>
+            <MenuItem value="launch_blockers">Launch Blockers</MenuItem>
+            <MenuItem value="overdue_work">Overdue Work</MenuItem>
+            <MenuItem value="needs_decision">Needs Decision</MenuItem>
+          </TextField>
+          <TextField select size="small" label="Assignee" value={checklistAssigneeFilter} onChange={(event) => setChecklistAssigneeFilter(event.target.value)} sx={{ minWidth: 160 }}>
+            <MenuItem value="all">All assignees</MenuItem>
+            {checklistFilters.map((assignee) => <MenuItem key={assignee} value={assignee}>{assignee}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Status" value={checklistStatusFilter} onChange={(event) => setChecklistStatusFilter(event.target.value)} sx={{ minWidth: 140 }}>
+            <MenuItem value="all">All statuses</MenuItem>
+            <MenuItem value="overdue">Overdue</MenuItem>
+            {Object.entries(PROGRAM_STATUS_LABELS).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
+          </TextField>
+          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: { sm: 'auto' } }}>
+            <Chip label={`${checklistMetrics.total} total`} size="small" />
+            {checklistMetrics.overdue > 0 && <Chip label={`${checklistMetrics.overdue} overdue`} size="small" color="error" />}
+            {checklistMetrics.blocked > 0 && <Chip label={`${checklistMetrics.blocked} blocked`} size="small" color="warning" />}
+          </Stack>
+          {canEdit && (
+            <Button size="small" startIcon={<AddCircleOutline />} onClick={addWorkstream} sx={{ ml: { sm: 'auto' } }}>
+              Add Workstream
+            </Button>
+          )}
+        </Stack>
+
+        {/* Bulk checklist actions (contextual) */}
+        {canEdit && selectedChecklistIds.length > 0 && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 2, p: 1.5, borderRadius: 3, border: `1px solid ${alpha(mongoColors.darkGreen, 0.16)}`, bgcolor: alpha(mongoColors.green, 0.04) }}>
+            <Chip label={`${selectedChecklistIds.length} selected`} size="small" color="info" />
+            <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ status: 'in_progress' })}>In Progress</Button>
+            <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ status: 'blocked' })}>Blocked</Button>
+            <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ status: 'complete' })}>Complete</Button>
+            <Button size="small" variant="outlined" onClick={() => applyBulkChecklistUpdate({ assigneeEmail: user?.email || '', owner: user?.name || 'Owner' })}>Assign To Me</Button>
+            <Button size="small" color="inherit" onClick={() => setSelectedChecklistIds([])}>Clear</Button>
+          </Stack>
+        )}
+
         <Grid container spacing={3}>
-          {draft.workstreams.map((workstream) => {
+          {draft.workstreams.map((workstream, workstreamIndex) => {
             const repo = repoMap.get(workstream.repoId);
             const color = getHealthColor(workstream.health);
             const filteredChecklist = workstream.checklist.filter((item) => {
@@ -1458,8 +1318,18 @@ export default function ProgramPage() {
                 <Card sx={{ height: '100%', border: `1px solid ${alpha(color, 0.18)}` }}>
                   <CardContent>
                     <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>{workstream.title}</Typography>
+                      <Box sx={{ flex: 1 }}>
+                        {canEdit ? (
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={workstream.title}
+                            onChange={(event) => updateWorkstream(workstream.id, { title: event.target.value })}
+                            sx={{ '& .MuiInputBase-input': { fontWeight: 700, fontSize: '1.15rem' } }}
+                          />
+                        ) : (
+                          <Typography variant="h6" sx={{ fontWeight: 700 }}>{workstream.title}</Typography>
+                        )}
                         {canEdit ? (
                           <TextField
                             fullWidth
@@ -1474,11 +1344,40 @@ export default function ProgramPage() {
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{workstream.summary}</Typography>
                         )}
                       </Box>
-                      <Chip label={PROGRAM_HEALTH_LABELS[workstream.health]} size="small" sx={{ bgcolor: alpha(color, 0.15), color, fontWeight: 700 }} />
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Chip label={PROGRAM_HEALTH_LABELS[workstream.health]} size="small" sx={{ bgcolor: alpha(color, 0.15), color, fontWeight: 700 }} />
+                        {canEdit && (
+                          <>
+                            <IconButton size="small" onClick={() => moveWorkstream(workstream.id, 'up')} disabled={workstreamIndex === 0}>
+                              <ArrowUpward fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => moveWorkstream(workstream.id, 'down')} disabled={workstreamIndex === draft.workstreams.length - 1}>
+                              <ArrowDownward fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" color="error" onClick={() => removeWorkstream(workstream.id)}>
+                              <DeleteOutline fontSize="small" />
+                            </IconButton>
+                          </>
+                        )}
+                      </Stack>
                     </Stack>
 
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-                      <Chip label={`${PROGRAM_REPO_AREA_LABELS[repo?.area || 'admin']} - ${repo?.name || 'Repo'}`} size="small" variant="outlined" />
+                      {canEdit ? (
+                        <TextField
+                          select
+                          size="small"
+                          value={workstream.repoId}
+                          onChange={(event) => updateWorkstream(workstream.id, { repoId: event.target.value })}
+                          sx={{ minWidth: 200 }}
+                        >
+                          {draft.repos.map((item) => (
+                            <MenuItem key={item.id} value={item.id}>{PROGRAM_REPO_AREA_LABELS[item.area]} / {item.name}</MenuItem>
+                          ))}
+                        </TextField>
+                      ) : (
+                        <Chip label={`${PROGRAM_REPO_AREA_LABELS[repo?.area || 'admin']} - ${repo?.name || 'Repo'}`} size="small" variant="outlined" />
+                      )}
                       <Chip label={PROGRAM_STAGE_LABELS[workstream.stage]} size="small" variant="outlined" />
                       <Chip label={PROGRAM_STATUS_LABELS[workstream.status]} size="small" sx={{ bgcolor: alpha(getStatusColor(workstream.status), 0.12), color: getStatusColor(workstream.status), fontWeight: 700 }} />
                     </Stack>
@@ -1851,7 +1750,23 @@ export default function ProgramPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {canEdit ? <TextField size="small" value={task.owner} onChange={(event) => updateTask(task.id, { owner: event.target.value })} /> : task.owner}
+                            {canEdit ? (
+                              <Autocomplete
+                                freeSolo
+                                options={availableParticipants}
+                                value={availableParticipants.find((participant) => participant.name === task.owner || participant.email === task.owner) || null}
+                                inputValue={task.owner}
+                                onInputChange={(_, value) => updateTask(task.id, { owner: value })}
+                                onChange={(_, participant) => {
+                                  if (participant && typeof participant !== 'string') {
+                                    updateTask(task.id, { owner: participant.name });
+                                  }
+                                }}
+                                getOptionLabel={(option) => typeof option === 'string' ? option : `${option.name} (${option.handle})`}
+                                renderInput={(params) => <TextField {...params} size="small" label="Owner" />}
+                                sx={{ minWidth: 200 }}
+                              />
+                            ) : task.owner}
                           </TableCell>
                           <TableCell>
                             {canEdit ? (
@@ -2290,6 +2205,610 @@ export default function ProgramPage() {
             </Card>
           </Grid>
         </Grid>
+      </TabPanel>
+
+      <TabPanel value={tab} index={4}>
+        {(() => {
+          // Gather all items with date information for the timeline
+          type GanttRow = {
+            id: string;
+            label: string;
+            parentLabel?: string;
+            type: 'workstream' | 'task' | 'checklist';
+            status: string;
+            health?: string;
+            owner: string;
+            dueDate: string;
+            startDate?: string;
+            completion?: number;
+          };
+
+          const ganttRows: GanttRow[] = [];
+
+          // Add workstreams (use audit.createdAt as start, targetDate as end)
+          for (const ws of draft.workstreams) {
+            ganttRows.push({
+              id: ws.id,
+              label: ws.title,
+              type: 'workstream',
+              status: ws.status,
+              health: ws.health,
+              owner: ws.owner,
+              dueDate: ws.targetDate,
+              startDate: ws.audit.createdAt?.slice(0, 10),
+              completion: ws.completion,
+            });
+            // Add checklist items under workstream
+            for (const item of ws.checklist) {
+              if (item.dueDate) {
+                ganttRows.push({
+                  id: item.id,
+                  label: item.label,
+                  parentLabel: ws.title,
+                  type: 'checklist',
+                  status: item.status,
+                  owner: item.assigneeEmail || item.owner,
+                  dueDate: item.dueDate,
+                });
+              }
+            }
+          }
+
+          // Add tasks
+          for (const task of draft.tasks) {
+            const parentWs = draft.workstreams.find((ws) => ws.id === task.workstreamId);
+            ganttRows.push({
+              id: task.id,
+              label: task.title,
+              parentLabel: parentWs?.title,
+              type: 'task',
+              status: task.status,
+              owner: task.owner,
+              dueDate: task.dueDate,
+              startDate: task.audit.createdAt?.slice(0, 10),
+            });
+          }
+
+          // Compute timeline bounds
+          const allDates = ganttRows
+            .flatMap((row) => [row.dueDate, row.startDate].filter(Boolean) as string[])
+            .map((d) => new Date(d).getTime())
+            .filter((t) => !isNaN(t));
+
+          if (allDates.length === 0) {
+            return (
+              <Card>
+                <CardContent>
+                  <Typography color="text.secondary">No items with dates to display on the timeline.</Typography>
+                </CardContent>
+              </Card>
+            );
+          }
+
+          const minTime = Math.min(...allDates);
+          const maxTime = Math.max(...allDates);
+          // Add 10% padding on each side, minimum 7 days
+          const range = Math.max(maxTime - minTime, 7 * 86400000);
+          const padding = range * 0.08;
+          const timelineStart = minTime - padding;
+          const timelineEnd = maxTime + padding;
+          const timelineRange = timelineEnd - timelineStart;
+
+          // Generate month markers
+          const monthMarkers: { label: string; position: number }[] = [];
+          const startMonth = new Date(timelineStart);
+          startMonth.setDate(1);
+          const cursor = new Date(startMonth);
+          while (cursor.getTime() <= timelineEnd) {
+            const pos = ((cursor.getTime() - timelineStart) / timelineRange) * 100;
+            if (pos >= 0 && pos <= 100) {
+              monthMarkers.push({
+                label: cursor.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+                position: pos,
+              });
+            }
+            cursor.setMonth(cursor.getMonth() + 1);
+          }
+
+          // Today marker
+          const todayPos = ((Date.now() - timelineStart) / timelineRange) * 100;
+
+          const getBarColor = (row: GanttRow) => {
+            if (row.status === 'complete') return mongoColors.green;
+            if (row.status === 'blocked') return '#DB3030';
+            if (row.health === 'at_risk') return '#DB3030';
+            if (row.health === 'watch') return '#F59E0B';
+            if (row.status === 'in_progress') return '#016BF8';
+            return mongoColors.gray[400];
+          };
+
+          const typeLabel = (type: GanttRow['type']) => {
+            if (type === 'workstream') return 'Workstream';
+            if (type === 'task') return 'Task';
+            return 'Checklist';
+          };
+
+          const rowHeight = 36;
+
+          return (
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Program Timeline</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Horizontal bars show due dates for workstreams, tasks, and checklist items. The green line marks today.
+                </Typography>
+
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Box sx={{ minWidth: 900, position: 'relative' }}>
+                    {/* Month header */}
+                    <Box sx={{ display: 'flex', ml: '260px', position: 'relative', height: 28, borderBottom: `1px solid ${mongoColors.gray[200]}` }}>
+                      {monthMarkers.map((marker) => (
+                        <Typography
+                          key={marker.label}
+                          variant="caption"
+                          sx={{
+                            position: 'absolute',
+                            left: `${marker.position}%`,
+                            transform: 'translateX(-50%)',
+                            color: mongoColors.gray[500],
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {marker.label}
+                        </Typography>
+                      ))}
+                    </Box>
+
+                    {/* Rows */}
+                    {ganttRows.map((row) => {
+                      const endTime = new Date(row.dueDate).getTime();
+                      const startTime = row.startDate ? new Date(row.startDate).getTime() : endTime - 14 * 86400000;
+                      const leftPct = Math.max(0, ((startTime - timelineStart) / timelineRange) * 100);
+                      const rightPct = Math.min(100, ((endTime - timelineStart) / timelineRange) * 100);
+                      const widthPct = Math.max(1.5, rightPct - leftPct);
+                      const barColor = getBarColor(row);
+                      const overdue = isOverdue(row.dueDate, row.status);
+
+                      return (
+                        <Box
+                          key={row.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            height: rowHeight,
+                            borderBottom: `1px solid ${mongoColors.gray[100]}`,
+                            '&:hover': { bgcolor: alpha(mongoColors.gray[100], 0.6) },
+                          }}
+                        >
+                          {/* Label column */}
+                          <Box sx={{ width: 260, minWidth: 260, pr: 2, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Chip
+                              label={typeLabel(row.type)}
+                              size="small"
+                              sx={{
+                                height: 18,
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                bgcolor: row.type === 'workstream' ? alpha(mongoColors.darkGreen, 0.1) : row.type === 'task' ? alpha('#016BF8', 0.1) : alpha(mongoColors.gray[400], 0.15),
+                                color: row.type === 'workstream' ? mongoColors.darkGreen : row.type === 'task' ? '#016BF8' : mongoColors.gray[600],
+                              }}
+                            />
+                            <Typography
+                              variant="caption"
+                              noWrap
+                              sx={{
+                                fontWeight: row.type === 'workstream' ? 700 : 400,
+                                flex: 1,
+                                color: overdue ? '#DB3030' : 'text.primary',
+                              }}
+                            >
+                              {row.label}
+                            </Typography>
+                          </Box>
+
+                          {/* Bar area */}
+                          <Box sx={{ flex: 1, position: 'relative', height: '100%' }}>
+                            {/* Vertical month gridlines */}
+                            {monthMarkers.map((marker) => (
+                              <Box
+                                key={`grid-${row.id}-${marker.label}`}
+                                sx={{
+                                  position: 'absolute',
+                                  left: `${marker.position}%`,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: '1px',
+                                  bgcolor: mongoColors.gray[100],
+                                }}
+                              />
+                            ))}
+                            {/* Today line */}
+                            {todayPos >= 0 && todayPos <= 100 && (
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  left: `${todayPos}%`,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: '2px',
+                                  bgcolor: alpha(mongoColors.green, 0.5),
+                                  zIndex: 1,
+                                }}
+                              />
+                            )}
+                            {/* Bar */}
+                            <Tooltip
+                              title={`${row.label}${row.parentLabel ? ` (${row.parentLabel})` : ''} - ${PROGRAM_STATUS_LABELS[row.status as keyof typeof PROGRAM_STATUS_LABELS] || row.status} - Due ${formatDate(row.dueDate)} - ${row.owner}${row.completion !== undefined ? ` - ${row.completion}%` : ''}`}
+                              arrow
+                              placement="top"
+                            >
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  left: `${leftPct}%`,
+                                  width: `${widthPct}%`,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  height: row.type === 'workstream' ? 16 : 10,
+                                  borderRadius: 2,
+                                  bgcolor: alpha(barColor, row.status === 'complete' ? 0.3 : 0.7),
+                                  border: overdue ? '2px solid #DB3030' : 'none',
+                                  cursor: 'default',
+                                  transition: 'opacity 0.15s',
+                                  '&:hover': { opacity: 0.85 },
+                                  // Show completion within workstream bars
+                                  ...(row.type === 'workstream' && row.completion !== undefined && row.completion < 100
+                                    ? {
+                                        background: `linear-gradient(to right, ${alpha(barColor, 0.8)} ${row.completion}%, ${alpha(barColor, 0.2)} ${row.completion}%)`,
+                                      }
+                                    : {}),
+                                }}
+                              />
+                            </Tooltip>
+                            {/* Due date label for workstreams */}
+                            {row.type === 'workstream' && (
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  position: 'absolute',
+                                  left: `${Math.min(rightPct + 0.5, 92)}%`,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  fontSize: '0.6rem',
+                                  color: mongoColors.gray[500],
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {formatDate(row.dueDate)}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+
+                    {/* Legend */}
+                    <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2.5, pt: 2, borderTop: `1px solid ${mongoColors.gray[200]}` }}>
+                      {[
+                        { label: 'On Track', color: '#016BF8' },
+                        { label: 'Watch', color: '#F59E0B' },
+                        { label: 'Blocked / At Risk', color: '#DB3030' },
+                        { label: 'Complete', color: mongoColors.green },
+                        { label: 'Not Started', color: mongoColors.gray[400] },
+                      ].map((item) => (
+                        <Stack key={item.label} direction="row" spacing={0.5} alignItems="center">
+                          <Box sx={{ width: 14, height: 8, borderRadius: 1, bgcolor: alpha(item.color, 0.7) }} />
+                          <Typography variant="caption" color="text.secondary">{item.label}</Typography>
+                        </Stack>
+                      ))}
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Box sx={{ width: 2, height: 12, bgcolor: alpha(mongoColors.green, 0.5) }} />
+                        <Typography variant="caption" color="text.secondary">Today</Typography>
+                      </Stack>
+                    </Stack>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          );
+        })()}
+      </TabPanel>
+
+      <TabPanel value={tab} index={5}>
+        {(() => {
+          // Build a map of assignee -> work items
+          type AssigneeItem = {
+            id: string;
+            label: string;
+            context: string;
+            type: 'workstream' | 'task' | 'checklist' | 'decision' | 'risk';
+            status: string;
+            dueDate: string;
+            health?: string;
+            priority?: string;
+          };
+
+          const assigneeMap = new Map<string, { name: string; email: string; items: AssigneeItem[] }>();
+
+          const ensureAssignee = (name: string, email?: string) => {
+            const key = (email || name).toLowerCase();
+            if (!key) return key;
+            if (!assigneeMap.has(key)) {
+              assigneeMap.set(key, { name: name || email || 'Unknown', email: email || '', items: [] });
+            }
+            return key;
+          };
+
+          // Workstream owners
+          for (const ws of draft.workstreams) {
+            const key = ensureAssignee(ws.owner);
+            if (key) {
+              assigneeMap.get(key)!.items.push({
+                id: ws.id,
+                label: ws.title,
+                context: 'Workstream',
+                type: 'workstream',
+                status: ws.status,
+                dueDate: ws.targetDate,
+                health: ws.health,
+              });
+            }
+
+            // Checklist items
+            for (const item of ws.checklist) {
+              const itemKey = ensureAssignee(item.owner, item.assigneeEmail);
+              if (itemKey) {
+                assigneeMap.get(itemKey)!.items.push({
+                  id: item.id,
+                  label: item.label,
+                  context: ws.title,
+                  type: 'checklist',
+                  status: item.status,
+                  dueDate: item.dueDate,
+                });
+              }
+            }
+          }
+
+          // Tasks
+          for (const task of draft.tasks) {
+            const key = ensureAssignee(task.owner);
+            if (key) {
+              const parentWs = draft.workstreams.find((ws) => ws.id === task.workstreamId);
+              assigneeMap.get(key)!.items.push({
+                id: task.id,
+                label: task.title,
+                context: parentWs?.title || 'Unlinked',
+                type: 'task',
+                status: task.status,
+                dueDate: task.dueDate,
+                priority: task.priority,
+              });
+            }
+          }
+
+          // Decisions
+          for (const decision of draft.decisions) {
+            const key = ensureAssignee(decision.owner);
+            if (key) {
+              assigneeMap.get(key)!.items.push({
+                id: decision.id,
+                label: decision.title,
+                context: 'Decision',
+                type: 'decision',
+                status: decision.status,
+                dueDate: decision.dueDate,
+              });
+            }
+          }
+
+          // Risks
+          for (const risk of draft.risks) {
+            const key = ensureAssignee(risk.owner);
+            if (key) {
+              assigneeMap.get(key)!.items.push({
+                id: risk.id,
+                label: risk.title,
+                context: 'Risk',
+                type: 'risk',
+                status: risk.status,
+                dueDate: '',
+              });
+            }
+          }
+
+          // Sort assignees by open item count descending
+          const assignees = Array.from(assigneeMap.values()).sort((a, b) => {
+            const aOpen = a.items.filter((item) => item.status !== 'complete' && item.status !== 'resolved').length;
+            const bOpen = b.items.filter((item) => item.status !== 'complete' && item.status !== 'resolved').length;
+            return bOpen - aOpen;
+          });
+
+          const typeChipColor = (type: AssigneeItem['type']) => {
+            if (type === 'workstream') return { bgcolor: alpha(mongoColors.darkGreen, 0.1), color: mongoColors.darkGreen };
+            if (type === 'task') return { bgcolor: alpha('#016BF8', 0.1), color: '#016BF8' };
+            if (type === 'decision') return { bgcolor: alpha('#F59E0B', 0.1), color: '#9A6700' };
+            if (type === 'risk') return { bgcolor: alpha('#DB3030', 0.1), color: '#DB3030' };
+            return { bgcolor: alpha(mongoColors.gray[400], 0.15), color: mongoColors.gray[600] };
+          };
+
+          const typeLabel = (type: AssigneeItem['type']) => {
+            if (type === 'workstream') return 'Workstream';
+            if (type === 'task') return 'Task';
+            if (type === 'decision') return 'Decision';
+            if (type === 'risk') return 'Risk';
+            return 'Checklist';
+          };
+
+          return (
+            <Stack spacing={3}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Work by Assignee</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                    All program work grouped by owner. People with the most open items appear first.
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              {assignees.map((assignee) => {
+                const openItems = assignee.items.filter((item) => item.status !== 'complete' && item.status !== 'resolved');
+                const completedItems = assignee.items.filter((item) => item.status === 'complete' || item.status === 'resolved');
+                const blockedItems = assignee.items.filter((item) => item.status === 'blocked');
+                const overdueItems = openItems.filter((item) => isOverdue(item.dueDate, item.status));
+                const isCurrentUser = commentUser && (
+                  assignee.email.toLowerCase() === commentUser.email.toLowerCase() ||
+                  assignee.name.toLowerCase() === commentUser.name.toLowerCase()
+                );
+
+                return (
+                  <Card
+                    key={assignee.email || assignee.name}
+                    sx={{
+                      border: isCurrentUser ? `2px solid ${alpha(mongoColors.darkGreen, 0.4)}` : undefined,
+                    }}
+                  >
+                    <CardContent>
+                      {/* Assignee header */}
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Box
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: '50%',
+                              bgcolor: isCurrentUser ? mongoColors.darkGreen : mongoColors.gray[300],
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: isCurrentUser ? '#fff' : mongoColors.gray[700],
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                            }}
+                          >
+                            {assignee.name.charAt(0).toUpperCase()}
+                          </Box>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                              {assignee.name}
+                              {isCurrentUser && (
+                                <Chip label="You" size="small" sx={{ ml: 1, height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: alpha(mongoColors.darkGreen, 0.12), color: mongoColors.darkGreen }} />
+                              )}
+                            </Typography>
+                            {assignee.email && (
+                              <Typography variant="caption" color="text.secondary">{assignee.email}</Typography>
+                            )}
+                          </Box>
+                        </Stack>
+                        <Stack direction="row" spacing={1}>
+                          <Chip label={`${openItems.length} open`} size="small" sx={{ fontWeight: 700 }} />
+                          {blockedItems.length > 0 && (
+                            <Chip label={`${blockedItems.length} blocked`} size="small" sx={{ fontWeight: 700, bgcolor: alpha('#DB3030', 0.1), color: '#DB3030' }} />
+                          )}
+                          {overdueItems.length > 0 && (
+                            <Chip label={`${overdueItems.length} overdue`} size="small" sx={{ fontWeight: 700, bgcolor: alpha('#F97316', 0.1), color: '#F97316' }} />
+                          )}
+                          {completedItems.length > 0 && (
+                            <Chip label={`${completedItems.length} done`} size="small" sx={{ fontWeight: 700, bgcolor: alpha(mongoColors.green, 0.12), color: mongoColors.darkGreen }} />
+                          )}
+                        </Stack>
+                      </Stack>
+
+                      {/* Open items table */}
+                      {openItems.length > 0 && (
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 700, width: 90 }}>Type</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Item</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: 160 }}>Context</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: 120 }}>Status</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: 100 }}>Due</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {openItems.map((item) => {
+                                const overdue = isOverdue(item.dueDate, item.status);
+                                const chipColors = typeChipColor(item.type);
+                                return (
+                                  <TableRow key={item.id} hover>
+                                    <TableCell>
+                                      <Chip
+                                        label={typeLabel(item.type)}
+                                        size="small"
+                                        sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, ...chipColors }}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography variant="body2" sx={{ fontWeight: item.type === 'workstream' ? 700 : 400 }}>
+                                        {item.label}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography variant="caption" color="text.secondary">{item.context}</Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Stack direction="row" spacing={0.5} alignItems="center">
+                                        <Chip
+                                          label={
+                                            PROGRAM_STATUS_LABELS[item.status as keyof typeof PROGRAM_STATUS_LABELS] ||
+                                            DECISION_STATUS_LABELS[item.status as keyof typeof DECISION_STATUS_LABELS] ||
+                                            RISK_STATUS_LABELS[item.status as keyof typeof RISK_STATUS_LABELS] ||
+                                            item.status
+                                          }
+                                          size="small"
+                                          sx={{
+                                            height: 20,
+                                            fontSize: '0.65rem',
+                                            fontWeight: 700,
+                                            bgcolor: alpha(getStatusColor(item.status), 0.12),
+                                            color: getStatusColor(item.status),
+                                          }}
+                                        />
+                                        {overdue && <Chip label="Overdue" size="small" color="error" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                                      </Stack>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: overdue ? '#DB3030' : 'text.secondary', fontWeight: overdue ? 700 : 400 }}
+                                      >
+                                        {item.dueDate ? formatDate(item.dueDate) : '-'}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+
+                      {/* Completed items (collapsed summary) */}
+                      {completedItems.length > 0 && (
+                        <Box sx={{ mt: openItems.length > 0 ? 1.5 : 0, px: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {completedItems.length} completed: {completedItems.map((item) => item.label).join(', ')}
+                          </Typography>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              {assignees.length === 0 && (
+                <Card>
+                  <CardContent>
+                    <Typography color="text.secondary">No assignees found across program items.</Typography>
+                  </CardContent>
+                </Card>
+              )}
+            </Stack>
+          );
+        })()}
       </TabPanel>
     </Box>
   );

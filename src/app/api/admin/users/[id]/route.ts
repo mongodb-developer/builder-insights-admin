@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 import { requireAdmin } from '@/lib/auth';
 import { ROLES, Role, ROLE_LABELS } from '@/lib/roles';
+import { logActivity } from '@/lib/activity';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +109,7 @@ export async function PUT(
       updates.role = body.role;
       updates.isAdmin = body.role === ROLES.ADMIN;
     }
-    if (body.jobTitle !== undefined) updates.jobTitle = body.jobTitle || null;
+    if (body.title !== undefined) updates.title = body.title || null;
     if (body.region !== undefined) updates.region = body.region;
     if (body.isActive !== undefined) updates.isActive = body.isActive;
     if (body.avatarUrl !== undefined) updates.avatarUrl = body.avatarUrl;
@@ -121,6 +122,32 @@ export async function PUT(
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    // Log the update
+    const changedFields: Record<string, unknown> = {};
+    if (body.role !== undefined && body.role !== advocate.role) {
+      changedFields.roleChanged = { from: advocate.role, to: body.role };
+    }
+    if (body.isActive !== undefined && body.isActive !== (advocate.isActive !== false)) {
+      changedFields.statusChanged = { from: advocate.isActive !== false ? 'active' : 'inactive', to: body.isActive ? 'active' : 'inactive' };
+    }
+    if (body.name !== undefined && body.name !== advocate.name) {
+      changedFields.nameChanged = { from: advocate.name, to: body.name };
+    }
+
+    const action = changedFields.roleChanged ? 'role_changed' as const
+      : changedFields.statusChanged ? (body.isActive ? 'user_reactivated' as const : 'user_deactivated' as const)
+      : 'user_updated' as const;
+
+    logActivity({
+      action,
+      email: admin.email,
+      advocateId: admin.advocateId || null,
+      targetEmail: advocate.email,
+      targetAdvocateId: id,
+      source: 'web',
+      details: changedFields,
+    });
 
     // Fetch updated user
     const updated = await db.collection('advocates').findOne({
@@ -189,6 +216,17 @@ export async function DELETE(
         },
       }
     );
+
+    // Log deactivation
+    logActivity({
+      action: 'user_deactivated',
+      email: admin.email,
+      advocateId: admin.advocateId || null,
+      targetEmail: advocate.email,
+      targetAdvocateId: id,
+      source: 'web',
+      details: { userName: advocate.name, role: advocate.role },
+    });
 
     return NextResponse.json({
       success: true,

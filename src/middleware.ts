@@ -2,57 +2,137 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
-// CORS headers for cross-origin requests (mobile web app)
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-};
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
 
 const COOKIE_NAME = 'di-session';
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'builder-insights-secret-change-me'
-);
 
-const PUBLIC_PATHS = [
-  '/',              // Landing page
-  '/login', 
-  '/api/auth',      // All auth routes (magic-link, verify-code)
-  '/api/events',    // Mobile app access
-  '/api/insights',  // Mobile app access
-  '/api/advocates', // Mobile app access
-  '/api/attachments', // Photo uploads
-  '/api/health',    // Health check endpoint
-  '/api/slack',     // Slack integration
-  '/api/sessions',  // Session management
-  '/api/bugs',      // Bug reports from mobile app
-  '/api/analytics', // Mobile app usage tracking (world map)
-  '/api/stats',     // Mobile app team stats (executive dashboard)
+// JWT secret — lazy-initialized so the build process can complete without AUTH_SECRET set.
+// In production, AUTH_SECRET must be provided or runtime requests will fail.
+let _secret: Uint8Array | null = null;
+
+function getAuthSecret(): Uint8Array {
+  if (_secret) return _secret;
+  const secret = process.env.AUTH_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'AUTH_SECRET environment variable is required in production. ' +
+      'Generate one with: openssl rand -base64 32'
+    );
+  }
+  _secret = new TextEncoder().encode(secret || 'builder-insights-secret-change-me');
+  return _secret;
+}
+
+// CORS: In production, restrict to known origins. In development, allow all.
+function getAllowedOrigins(): string[] | null {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map((o) => o.trim()).filter(Boolean);
+  }
+  // No env var set — allow all in development, restrict in production
+  if (process.env.NODE_ENV === 'production') {
+    // In production with no ALLOWED_ORIGINS, default to same-origin only
+    // (returning empty array means no cross-origin requests allowed)
+    return [];
+  }
+  return null; // null = allow all (development)
+}
+
+function getCorsHeaders(request: NextRequest): Record<string, string> {
+  const allowedOrigins = getAllowedOrigins();
+  const requestOrigin = request.headers.get('origin') || '';
+
+  let allowOrigin = '*';
+  if (allowedOrigins !== null) {
+    // Restricted mode: only allow listed origins
+    if (allowedOrigins.includes(requestOrigin)) {
+      allowOrigin = requestOrigin;
+    } else if (allowedOrigins.length === 0 && requestOrigin) {
+      // No origins configured in production — deny cross-origin
+      allowOrigin = '';
+    }
+  }
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin || 'null',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    ...(allowedOrigins !== null && allowOrigin !== '*'
+      ? { Vary: 'Origin' }
+      : {}),
+  };
+}
+
+// ============================================================================
+// PATH CLASSIFICATION
+// ============================================================================
+
+// Fully public — no auth required for any HTTP method
+const FULLY_PUBLIC_PATHS = [
+  '/api/auth',   // Auth flow (magic-link, verify-code, logout)
+  '/api/health', // Health check
 ];
 
-// Paths that require admin role
+// Public for GET only — reads allowed without auth (mobile app read access)
+// POST/PUT/PATCH/DELETE on these paths require a valid JWT
+const PUBLIC_GET_PATHS = [
+  '/api/events',
+  '/api/insights',
+  '/api/advocates',
+  '/api/sessions',
+  '/api/bugs',
+  '/api/attachments',
+  '/api/analytics',
+  '/api/stats',
+  '/api/slack',
+  '/api/cron',  // Cron routes handle their own auth via CRON_SECRET
+];
+
+// Require admin role
 const ADMIN_PATHS = [
   '/admin',
   '/api/admin',
   '/operations',
   '/api/operations',
+  '/monitoring',
 ];
 
-// Paths that require at least 'advocate' role for mutations (POST, PUT, PATCH, DELETE)
-// Viewers can only GET these endpoints
-const MUTATION_PROTECTED_PATHS = [
-  '/api/insights',
-  '/api/events',
-  '/api/sessions',
-];
-
-// Paths that require at least 'manager' role
+// Require at least manager role
 const MANAGER_PATHS = [
   '/import',
   '/api/events/upsert',
 ];
 
-// Role hierarchy for comparison
+// Require at least advocate role to view these pages (viewers get redirected)
+const ADVOCATE_PAGE_PATHS = [
+  '/events/new',
+];
+
+// Require at least advocate role for mutations (viewers can only GET)
+const ADVOCATE_MUTATION_PATHS = [
+  '/api/insights',
+  '/api/events',
+  '/api/sessions',
+  '/api/bugs',
+  '/api/attachments',
+  '/api/analytics',
+  '/api/stats',
+];
+
+// Require admin or manager role for mutations
+const ADMIN_MUTATION_PATHS = [
+  '/api/advocates',
+  '/api/slack',
+  '/api/program',
+  '/api/schema',
+];
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
 const ROLE_HIERARCHY: Record<string, number> = {
   admin: 100,
   manager: 75,
@@ -74,112 +154,202 @@ interface TokenPayload {
   isAdmin: boolean;
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Handle CORS preflight requests
-  if (request.method === 'OPTIONS') {
-    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+function isMutationMethod(method: string): boolean {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+}
+
+function matchesPath(pathname: string, paths: string[]): boolean {
+  return paths.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
+
+/**
+ * Extract JWT from cookie or Authorization header.
+ * Supports both web (cookie) and mobile (Bearer token) auth.
+ */
+function extractToken(request: NextRequest): string | undefined {
+  // 1. Try cookie first (web app)
+  const cookieToken = request.cookies.get(COOKIE_NAME)?.value;
+  if (cookieToken) return cookieToken;
+
+  // 2. Fall back to Authorization header (mobile app)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.slice(7);
   }
 
-  // Add CORS headers to all API responses
+  return undefined;
+}
+
+async function verifyJwt(token: string): Promise<TokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, getAuthSecret());
+    return payload as unknown as TokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// MIDDLEWARE
+// ============================================================================
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // --- CORS preflight ---
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 204,
+      headers: getCorsHeaders(request),
+    });
+  }
+
   const addCorsHeaders = (response: NextResponse) => {
-    Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+    const headers = getCorsHeaders(request);
+    Object.entries(headers).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
     return response;
   };
 
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-
-  // Allow static files (images, etc.)
+  // --- Static files ---
   if (/\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2)$/i.test(pathname)) {
     return NextResponse.next();
   }
 
-  // Redirect authenticated users from login to dashboard
-  if (pathname === '/login' && token) {
-    try {
-      await jwtVerify(token, SECRET);
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    } catch {
-      // Token invalid, continue to login
+  // --- Page routes (non-API) ---
+  // Landing page and login are always accessible
+  if (pathname === '/' || pathname === '/login') {
+    const token = extractToken(request);
+    // Redirect authenticated users from login to dashboard
+    if (pathname === '/login' && token) {
+      const user = await verifyJwt(token);
+      if (user) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
     }
+    return NextResponse.next();
   }
 
-  // Allow public paths
-  // Exact match for root, startsWith for other paths
-  if (pathname === '/' || PUBLIC_PATHS.some((p) => p !== '/' && pathname.startsWith(p))) {
-    // Add CORS headers for API routes
+  // --- Fully public API paths (any method, no auth) ---
+  if (matchesPath(pathname, FULLY_PUBLIC_PATHS)) {
     if (pathname.startsWith('/api/')) {
       return addCorsHeaders(NextResponse.next());
     }
     return NextResponse.next();
   }
 
-  // Check session cookie (token already declared at top)
-  if (!token) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+  // --- Public GET paths (read-only without auth) ---
+  const isPublicGetPath = matchesPath(pathname, PUBLIC_GET_PATHS);
+  if (isPublicGetPath && !isMutationMethod(request.method)) {
+    // GET/HEAD/OPTIONS on these paths is allowed without auth
+    if (pathname.startsWith('/api/')) {
+      return addCorsHeaders(NextResponse.next());
+    }
+    return NextResponse.next();
   }
 
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    const user = payload as unknown as TokenPayload;
+  // --- Everything below requires authentication ---
+  const token = extractToken(request);
 
-    // Check admin paths
-    const isAdminPath = ADMIN_PATHS.some((p) => pathname.startsWith(p));
-    if (isAdminPath) {
-      if (user.role !== 'admin' && !user.isAdmin) {
-        // Not admin - redirect to dashboard or return 403 for API
-        if (pathname.startsWith('/api/')) {
-          return NextResponse.json(
-            { error: 'Admin access required' },
-            { status: 403 }
-          );
-        }
-        const dashboardUrl = new URL('/dashboard', request.url);
-        return NextResponse.redirect(dashboardUrl);
-      }
+  if (!token) {
+    // No token — redirect pages to login, return 401 for API
+    if (pathname.startsWith('/api/')) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        )
+      );
     }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
 
-    // Check manager paths
-    const isManagerPath = MANAGER_PATHS.some((p) => pathname.startsWith(p));
-    if (isManagerPath) {
-      if (!hasRole(user.role, 'manager')) {
-        if (pathname.startsWith('/api/')) {
-          return NextResponse.json(
-            { error: 'Manager access required' },
-            { status: 403 }
-          );
-        }
-        const dashboardUrl = new URL('/dashboard', request.url);
-        return NextResponse.redirect(dashboardUrl);
-      }
-    }
-
-    // Check mutation-protected paths (viewers can only GET)
-    const method = request.method;
-    const isMutationMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
-    const isMutationProtectedPath = MUTATION_PROTECTED_PATHS.some((p) => pathname.startsWith(p));
-    
-    if (isMutationMethod && isMutationProtectedPath) {
-      if (!hasRole(user.role, 'advocate')) {
-        return NextResponse.json(
-          { error: 'You have view-only access. Contact an administrator to request edit permissions.' },
-          { status: 403 }
-        );
-      }
-    }
-
-    return NextResponse.next();
-  } catch {
+  const user = await verifyJwt(token);
+  if (!user) {
     // Invalid/expired token
+    if (pathname.startsWith('/api/')) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: 'Invalid or expired token' },
+          { status: 401 }
+        )
+      );
+    }
     const loginUrl = new URL('/login', request.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete(COOKIE_NAME);
     return response;
   }
+
+  // --- Role-based access checks ---
+
+  // Admin paths: require admin role
+  if (matchesPath(pathname, ADMIN_PATHS)) {
+    if (user.role !== 'admin' && !user.isAdmin) {
+      if (pathname.startsWith('/api/')) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: 'Admin access required' },
+            { status: 403 }
+          )
+        );
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  // Manager paths: require manager role or higher
+  if (matchesPath(pathname, MANAGER_PATHS)) {
+    if (!hasRole(user.role, 'manager')) {
+      if (pathname.startsWith('/api/')) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: 'Manager access required' },
+            { status: 403 }
+          )
+        );
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  // Advocate page paths: viewers can't access event creation/edit pages
+  if (matchesPath(pathname, ADVOCATE_PAGE_PATHS) || /^\/events\/[^/]+\/edit$/.test(pathname)) {
+    if (!hasRole(user.role, 'advocate')) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  // Admin mutation paths: require manager or admin for write operations
+  if (isMutationMethod(request.method) && matchesPath(pathname, ADMIN_MUTATION_PATHS)) {
+    if (!hasRole(user.role, 'manager')) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: 'Manager or admin access required for this operation' },
+          { status: 403 }
+        )
+      );
+    }
+  }
+
+  // Advocate mutation paths: require advocate role or higher for write operations
+  if (isMutationMethod(request.method) && matchesPath(pathname, ADVOCATE_MUTATION_PATHS)) {
+    if (!hasRole(user.role, 'advocate')) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: 'You have view-only access. Contact an administrator to request edit permissions.' },
+          { status: 403 }
+        )
+      );
+    }
+  }
+
+  // Authenticated and authorized — proceed
+  if (pathname.startsWith('/api/')) {
+    return addCorsHeaders(NextResponse.next());
+  }
+  return NextResponse.next();
 }
 
 export const config = {

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       const { ObjectId } = await import('mongodb');
       const now = new Date().toISOString();
       
-      const insight = {
+      const insight: Record<string, any> = {
         _id: new ObjectId().toString(),
         text: body.text || '',
         type: body.type || 'General Feedback',
@@ -94,6 +94,13 @@ export async function POST(request: NextRequest) {
         updatedAt: now,
         synced: true,
       };
+
+      // Optional fields from mobile app (AI distillation, audio intelligence, transcription)
+      if (body.title !== undefined) insight.title = body.title;
+      if (body.aiDistillation !== undefined) insight.aiDistillation = body.aiDistillation;
+      if (body.audioIntelligence !== undefined) insight.audioIntelligence = body.audioIntelligence;
+      if (body.pendingTranscription !== undefined) insight.pendingTranscription = body.pendingTranscription;
+      if (body.transcriptionError !== undefined) insight.transcriptionError = body.transcriptionError;
 
       await col.insertOne(insight as any);
       

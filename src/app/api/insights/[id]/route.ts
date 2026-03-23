@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection, collections } from '@/lib/mongodb';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,10 +51,24 @@ export async function PUT(
     const body = await request.json();
     const col = await getCollection(collections.insights);
 
+    // Ownership check: advocates can only edit their own insights
+    const session = await getSession();
+    if (session && session.role === 'advocate') {
+      const existing = await col.findOne({ _id: id as unknown as any });
+      if (existing && existing.advocateId !== session.advocateId) {
+        return NextResponse.json(
+          { error: 'You can only edit your own insights' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Fields that can be updated
     const allowedFields = [
       'text', 'type', 'sentiment', 'priority', 'productAreas',
-      'tags', 'followUpRequired', 'developerInfo', 'annotations'
+      'tags', 'followUpRequired', 'developerInfo', 'annotations',
+      'title', 'aiDistillation', 'audioIntelligence',
+      'pendingTranscription', 'transcriptionError',
     ];
 
     const updates: Record<string, any> = {
@@ -96,6 +111,17 @@ export async function DELETE(
     
     if (!insight) {
       return NextResponse.json({ error: 'Insight not found' }, { status: 404 });
+    }
+
+    // Ownership check: advocates can only delete their own insights
+    const session = await getSession();
+    if (session && session.role === 'advocate') {
+      if (insight.advocateId !== session.advocateId) {
+        return NextResponse.json(
+          { error: 'You can only delete your own insights' },
+          { status: 403 }
+        );
+      }
     }
 
     await col.deleteOne({ _id: id as unknown as any });

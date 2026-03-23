@@ -4,9 +4,23 @@ import bcrypt from 'bcryptjs';
 import { getDb } from './mongodb';
 import { Role, ROLES, isAdmin as checkIsAdmin, isViewerOnly, canModify, getPermissions, RolePermissions } from './roles';
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'builder-insights-secret-change-me'
-);
+// Lazy-initialized secret — validated on first use, not at module load time
+// (so the build process can complete without AUTH_SECRET set)
+let _secret: Uint8Array | null = null;
+
+function getAuthSecret(): Uint8Array {
+  if (_secret) return _secret;
+  const secret = process.env.AUTH_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'AUTH_SECRET environment variable is required in production. ' +
+      'Generate one with: openssl rand -base64 32'
+    );
+  }
+  _secret = new TextEncoder().encode(secret || 'builder-insights-secret-change-me');
+  return _secret;
+}
+
 export const COOKIE_NAME = 'di-session';
 const EXPIRY = '7d';
 
@@ -27,12 +41,12 @@ export async function createToken(payload: TokenPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime(EXPIRY)
     .setIssuedAt()
-    .sign(SECRET);
+    .sign(getAuthSecret());
 }
 
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getAuthSecret());
     return payload as unknown as TokenPayload;
   } catch {
     return null;
@@ -197,5 +211,5 @@ export async function ensureAdminExists(): Promise<boolean> {
   return false;
 }
 
-export { SECRET, ROLES, getPermissions, isViewerOnly, canModify };
+export { getAuthSecret, ROLES, getPermissions, isViewerOnly, canModify };
 export type { Role, RolePermissions };

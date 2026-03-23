@@ -5,12 +5,23 @@ import { isSlackConfigured, postToSlack, getAppUrl } from '@/lib/slack';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/slack/digest - Post weekly digest to Slack
+ * GET /api/cron/slack-digest - Called by Vercel Cron
  *
- * Can be called by a Vercel cron job or manually from admin UI.
- * Summarizes insights from the past week.
+ * Vercel cron jobs invoke GET requests. This endpoint replicates the digest
+ * logic from /api/slack/digest POST so it can be triggered automatically.
+ *
+ * Protected by CRON_SECRET -- Vercel sets the Authorization header automatically
+ * when invoking cron jobs.
  */
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
+  // Verify the request is from Vercel Cron
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   if (!isSlackConfigured()) {
     return NextResponse.json(
       { error: 'Slack webhook not configured' },
@@ -21,8 +32,6 @@ export async function POST(request: NextRequest) {
   try {
     const col = await getCollection(collections.insights);
 
-    // Get insights from the past week
-    // capturedAt is stored as ISO string throughout the codebase
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -31,7 +40,6 @@ export async function POST(request: NextRequest) {
     }).toArray();
 
     if (insights.length === 0) {
-      // Still post a message but note no insights
       const noDataMessage = {
         blocks: [
           {
@@ -55,11 +63,8 @@ export async function POST(request: NextRequest) {
       const response = await postToSlack(noDataMessage);
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Slack webhook error:', errorText);
-        return NextResponse.json(
-          { error: 'Failed to post to Slack', detail: errorText },
-          { status: 502 }
-        );
+        console.error('Slack cron webhook error:', errorText);
+        return NextResponse.json({ error: 'Failed to post to Slack' }, { status: 502 });
       }
 
       return NextResponse.json({ success: true, insightCount: 0 });
@@ -68,7 +73,6 @@ export async function POST(request: NextRequest) {
     // Calculate statistics
     const totalInsights = insights.length;
 
-    // Sentiment breakdown
     const sentiment = { positive: 0, neutral: 0, negative: 0 };
     insights.forEach((i: any) => {
       if (i.sentiment === 'Positive') sentiment.positive++;
@@ -76,7 +80,6 @@ export async function POST(request: NextRequest) {
       else sentiment.neutral++;
     });
 
-    // Priority breakdown
     const priority = { critical: 0, high: 0, medium: 0, low: 0 };
     insights.forEach((i: any) => {
       if (i.priority === 'Critical') priority.critical++;
@@ -85,7 +88,6 @@ export async function POST(request: NextRequest) {
       else priority.low++;
     });
 
-    // Top product areas
     const productAreaCounts: Record<string, number> = {};
     insights.forEach((i: any) => {
       (i.productAreas || []).forEach((area: string) => {
@@ -96,7 +98,6 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    // Top advocates
     const advocateCounts: Record<string, number> = {};
     insights.forEach((i: any) => {
       const name = i.advocateName || 'Unknown';
@@ -106,7 +107,6 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
 
-    // Top 3 high-priority insights
     const topInsights = insights
       .filter((i: any) => i.priority === 'Critical' || i.priority === 'High')
       .sort((a: any, b: any) => {
@@ -115,13 +115,11 @@ export async function POST(request: NextRequest) {
       })
       .slice(0, 3);
 
-    // Date formatting with explicit locale
     const dateOpts: Intl.DateTimeFormatOptions = { dateStyle: 'medium' };
     const weekStartStr = oneWeekAgo.toLocaleDateString('en-US', dateOpts);
     const weekEndStr = new Date().toLocaleDateString('en-US', dateOpts);
     const dashboardUrl = `${getAppUrl()}/executive`;
 
-    // Build Slack message
     const slackMessage = {
       blocks: [
         {
@@ -139,9 +137,7 @@ export async function POST(request: NextRequest) {
             text: `*${totalInsights} insights* captured this week by the builder team! 🎉`,
           },
         },
-        {
-          type: 'divider',
-        },
+        { type: 'divider' },
         {
           type: 'section',
           fields: [
@@ -155,31 +151,25 @@ export async function POST(request: NextRequest) {
             },
           ],
         },
-        ...(topAreas.length > 0 ? [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `*Top Product Areas*\n${topAreas.map(([area, count], i) => `${i + 1}. ${area} (${count})`).join('\n')}`,
-            },
+        ...(topAreas.length > 0 ? [{
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Top Product Areas*\n${topAreas.map(([area, count], i) => `${i + 1}. ${area} (${count})`).join('\n')}`,
           },
-        ] : []),
-        ...(topAdvocates.length > 0 ? [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `*Top Contributors* 🏆\n${topAdvocates.map(([name, count], i) => {
-                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
-                return `${medal} ${name}: ${count} insights`;
-              }).join('\n')}`,
-            },
+        }] : []),
+        ...(topAdvocates.length > 0 ? [{
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Top Contributors* 🏆\n${topAdvocates.map(([name, count], i) => {
+              const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+              return `${medal} ${name}: ${count} insights`;
+            }).join('\n')}`,
           },
-        ] : []),
+        }] : []),
         ...(topInsights.length > 0 ? [
-          {
-            type: 'divider',
-          },
+          { type: 'divider' },
           {
             type: 'section',
             text: {
@@ -195,31 +185,23 @@ export async function POST(request: NextRequest) {
             },
           })),
         ] : []),
-        {
-          type: 'divider',
-        },
+        { type: 'divider' },
         {
           type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `📅 Week of ${weekStartStr} - ${weekEndStr} | <${dashboardUrl}|View Full Dashboard>`,
-            },
-          ],
+          elements: [{
+            type: 'mrkdwn',
+            text: `📅 Week of ${weekStartStr} - ${weekEndStr} | <${dashboardUrl}|View Full Dashboard>`,
+          }],
         },
       ],
     };
 
-    // Post to Slack with timeout
     const response = await postToSlack(slackMessage);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Slack webhook error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to post to Slack', detail: errorText },
-        { status: 502 }
-      );
+      console.error('Slack cron webhook error:', errorText);
+      return NextResponse.json({ error: 'Failed to post to Slack' }, { status: 502 });
     }
 
     return NextResponse.json({
@@ -229,54 +211,9 @@ export async function POST(request: NextRequest) {
       priority,
     });
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      console.error('Slack webhook timed out');
-      return NextResponse.json(
-        { error: 'Slack webhook request timed out' },
-        { status: 504 }
-      );
-    }
-    console.error('Slack digest error:', error);
+    console.error('Slack cron digest error:', error);
     return NextResponse.json(
       { error: 'Failed to generate digest' },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * GET /api/slack/digest - Preview the digest without posting
- */
-export async function GET() {
-  try {
-    const col = await getCollection(collections.insights);
-
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    const insights = await col.find({
-      capturedAt: { $gte: oneWeekAgo.toISOString() }
-    }).toArray();
-
-    const sentiment = { positive: 0, neutral: 0, negative: 0 };
-    insights.forEach((i: any) => {
-      if (i.sentiment === 'Positive') sentiment.positive++;
-      else if (i.sentiment === 'Negative') sentiment.negative++;
-      else sentiment.neutral++;
-    });
-
-    return NextResponse.json({
-      configured: isSlackConfigured(),
-      preview: {
-        insightCount: insights.length,
-        weekStart: oneWeekAgo.toISOString(),
-        weekEnd: new Date().toISOString(),
-        sentiment,
-      },
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to generate preview' },
       { status: 500 }
     );
   }

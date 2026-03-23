@@ -225,6 +225,35 @@ export interface Insight {
   
   // AI Analysis (optional, populated by /api/insights/[id]/analyze)
   aiAnalysis?: InsightAIAnalysis;
+
+  // AI Distillation (from mobile app, generated client-side after capture)
+  title?: string;
+  aiDistillation?: {
+    title?: string;
+    summary?: string;
+    bullets?: string[];
+    actionItems?: string[];
+    keyPhrases?: string[];
+    generatedAt?: string;
+    source?: 'heuristic' | 'openai';
+    model?: string;
+  };
+
+  // Audio Intelligence (from voice recordings on mobile)
+  audioIntelligence?: {
+    durationMs?: number;
+    language?: string;
+    generatedAt?: string;
+    source?: string;
+    speakerStrategy?: string;
+    speakers?: Array<{ id: string; label: string; segmentCount: number; durationMs: number }>;
+    segments?: Array<{ id: string; text: string; startMs: number; endMs: number; speakerId: string; speakerLabel: string; confidence?: number }>;
+    waveform?: number[];
+  };
+
+  // Transcription lifecycle
+  pendingTranscription?: string | null;
+  transcriptionError?: string;
 }
 
 // ============================================================================
@@ -252,16 +281,25 @@ export interface Advocate {
   _id: string;
   name: string;
   email: string;
-  role: string;
-  region: Region;
+  title?: string;
+  role: string;           // 'viewer' | 'advocate' | 'manager' | 'admin'
+  region?: Region;
   isAdmin: boolean;
-  
-  // Stats
+  isActive: boolean;
+  avatarUrl?: string;
+
+  // Stats (may be stored or computed)
   insightCount?: number;
   eventCount?: number;
-  
-  // Meta
+
+  // Activity tracking
   lastAccessAt?: string;
+  lastLoginAt?: string;
+  lastLoginSource?: 'web' | 'mobile' | 'api' | null;
+  totalLogins?: number;
+  last30DaysLogins?: number;
+
+  // Meta
   createdAt: string;
   updatedAt: string;
 }

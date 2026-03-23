@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { createToken, COOKIE_NAME } from '@/lib/auth';
+import { logActivity, ensureActivityIndexes } from '@/lib/activity';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { returnDocument: 'after' }
       );
     }
+
+    // Log successful login via magic link
+    ensureActivityIndexes();
+    logActivity({
+      action: 'login',
+      email: magicLink.email,
+      advocateId: magicLink.advocateId?.toString() || null,
+      source: isMobile ? 'mobile' : 'web',
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
+      userAgent: request.headers.get('user-agent') || null,
+      details: { method: 'magic_link', role: magicLink.userRole },
+    });
 
     // For mobile apps, return JSON with token
     if (isMobile) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { getDb } from '@/lib/mongodb';
 import { extractProgramMentions, extractProgramParticipants, getProgramCollection, getOrCreateProgram, prepareProgramUpdate } from '@/lib/program-rollout';
 import type { ProgramActivityEntry, ProgramAudit, ProgramComment, ProgramRecord } from '@/types/program';
 
@@ -7,6 +8,14 @@ export const dynamic = 'force-dynamic';
 
 function canUpdateProgram(role?: string) {
   return role === 'admin' || role === 'manager';
+}
+
+async function getActiveAdvocates() {
+  const db = await getDb();
+  const docs = await db.collection('advocates')
+    .find({ isActive: { $ne: false } }, { projection: { name: 1, email: 1, role: 1, title: 1, isActive: 1 } })
+    .toArray();
+  return docs as unknown as Array<{ name?: string; email: string; role?: string; title?: string | null; isActive?: boolean }>;
 }
 
 function makeActivityId() {
@@ -235,10 +244,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const program = await getOrCreateProgram(user.name || user.email || 'system');
+    const [program, advocates] = await Promise.all([
+      getOrCreateProgram(user.name || user.email || 'system'),
+      getActiveAdvocates(),
+    ]);
     return NextResponse.json({
       program,
-      participants: extractProgramParticipants(program),
+      participants: extractProgramParticipants(advocates),
       notifications: extractProgramMentions(program).filter((mention) => mention.email.toLowerCase() === user.email.toLowerCase()),
     });
   } catch (error) {
@@ -254,11 +266,13 @@ export async function PATCH() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const program = await getOrCreateProgram(user.name || user.email || 'system');
-    const participants = extractProgramParticipants(program);
+    const [program, advocates] = await Promise.all([
+      getOrCreateProgram(user.name || user.email || 'system'),
+      getActiveAdvocates(),
+    ]);
 
     return NextResponse.json({
-      participants,
+      participants: extractProgramParticipants(advocates),
       notifications: extractProgramMentions(program).filter((mention) => mention.email.toLowerCase() === user.email.toLowerCase()),
     });
   } catch (error) {
@@ -290,9 +304,10 @@ export async function PUT(request: Request) {
 
     await col.replaceOne({ _id: existing._id }, updated, { upsert: true });
 
+    const advocates = await getActiveAdvocates();
     return NextResponse.json({
       program: updated,
-      participants: extractProgramParticipants(updated),
+      participants: extractProgramParticipants(advocates),
       notifications: extractProgramMentions(updated).filter((mention) => mention.email.toLowerCase() === user.email.toLowerCase()),
     });
   } catch (error) {

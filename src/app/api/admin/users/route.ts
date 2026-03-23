@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 import { getSessionUser, requireAdmin } from '@/lib/auth';
 import { ROLES, Role, ROLE_LABELS } from '@/lib/roles';
+import { logActivity, ensureActivityIndexes } from '@/lib/activity';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,22 +43,65 @@ export async function GET(request: NextRequest) {
       insightCounts.map((c) => [c._id, c.count])
     );
 
-    const users = advocates.map((a) => ({
-      _id: a._id.toString(),
-      email: a.email || '',
-      name: a.name || '',
-      role: a.role || ROLES.ADVOCATE,
-      roleLabel: ROLE_LABELS[(a.role as Role) || ROLES.ADVOCATE],
-      jobTitle: a.jobTitle || null,
-      region: a.region || '',
-      isActive: a.isActive !== false,
-      isAdmin: a.role === ROLES.ADMIN || a.isAdmin === true,
-      avatarUrl: a.avatarUrl || null,
-      insightCount: countMap[a._id.toString()] || 0,
-      lastActiveAt: a.lastActiveAt || null,
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt,
-    }));
+    // Get login stats from activity_log (last login + count per user)
+    ensureActivityIndexes();
+    const loginStats = await db
+      .collection('activity_log')
+      .aggregate([
+        { $match: { action: 'login' } },
+        {
+          $group: {
+            _id: '$email',
+            totalLogins: { $sum: 1 },
+            lastLoginAt: { $max: '$timestamp' },
+            lastSource: { $last: '$source' },
+            last30DaysLogins: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    const loginMap = Object.fromEntries(
+      loginStats.map((s) => [s._id, {
+        totalLogins: s.totalLogins,
+        lastLoginAt: s.lastLoginAt,
+        lastSource: s.lastSource,
+        last30DaysLogins: s.last30DaysLogins,
+      }])
+    );
+
+    const users = advocates.map((a) => {
+      const email = (a.email || '').toLowerCase();
+      const login = loginMap[email] || null;
+      return {
+        _id: a._id.toString(),
+        email: a.email || '',
+        name: a.name || '',
+        role: a.role || ROLES.ADVOCATE,
+        roleLabel: ROLE_LABELS[(a.role as Role) || ROLES.ADVOCATE],
+        title: a.title || a.jobTitle || null,
+        region: a.region || '',
+        isActive: a.isActive !== false,
+        isAdmin: a.role === ROLES.ADMIN || a.isAdmin === true,
+        avatarUrl: a.avatarUrl || null,
+        insightCount: countMap[a._id.toString()] || 0,
+        lastAccessAt: a.lastAccessAt || null,
+        lastLoginAt: login?.lastLoginAt || a.lastAccessAt || null,
+        lastLoginSource: login?.lastSource || null,
+        totalLogins: login?.totalLogins || 0,
+        last30DaysLogins: login?.last30DaysLogins || 0,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+      };
+    });
 
     return NextResponse.json({ 
       users,
@@ -80,7 +124,7 @@ export async function GET(request: NextRequest) {
 // ============================================================================
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
 
     const db = await getDb();
     const body = await request.json();
@@ -113,7 +157,7 @@ export async function POST(request: NextRequest) {
       name: body.name,
       role,
       isAdmin: role === ROLES.ADMIN,
-      jobTitle: body.jobTitle || null,
+      title: body.title || null,
       region: body.region || null,
       isActive: body.isActive !== false,
       avatarUrl: body.avatarUrl || null,
@@ -122,6 +166,17 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await db.collection('advocates').insertOne(advocate);
+
+    // Log user creation
+    logActivity({
+      action: 'user_created',
+      email: admin.email,
+      advocateId: admin.advocateId || null,
+      targetEmail: advocate.email,
+      targetAdvocateId: result.insertedId.toString(),
+      source: 'web',
+      details: { role, name: advocate.name },
+    });
 
     return NextResponse.json(
       { 

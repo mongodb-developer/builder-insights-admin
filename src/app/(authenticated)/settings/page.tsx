@@ -29,12 +29,24 @@ interface SchemaMapping {
   aliases: string[];
 }
 
+const ROLE_LEVELS: Record<string, number> = { admin: 100, manager: 75, advocate: 50, viewer: 25 };
+
 export default function SettingsPage() {
   const { startTour } = useHelp();
   const [aliases, setAliases] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [helpReset, setHelpReset] = useState(false);
+  const [userRole, setUserRole] = useState<string>('viewer');
+
+  const isManager = (ROLE_LEVELS[userRole] || 0) >= ROLE_LEVELS.manager;
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.role) setUserRole(data.role); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/schema')
@@ -158,7 +170,7 @@ export default function SettingsPage() {
                             label={alias}
                             size="small"
                             color="primary"
-                            onDelete={() => handleDeleteAlias(mapping.field, alias)}
+                            onDelete={isManager ? () => handleDeleteAlias(mapping.field, alias) : undefined}
                             sx={{ mb: 0.5 }}
                           />
                         ))}
@@ -170,7 +182,7 @@ export default function SettingsPage() {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      {mapping.custom.length > 0 && (
+                      {mapping.custom.length > 0 && isManager && (
                         <IconButton
                           size="small"
                           color="error"
@@ -191,7 +203,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Slack Integration */}
-      <SlackSettings />
+      <SlackSettings canSend={isManager} />
 
       {/* Export/Import */}
       <Card sx={{ mt: 3 }}>
@@ -257,7 +269,7 @@ export default function SettingsPage() {
   );
 }
 
-function SlackSettings() {
+function SlackSettings({ canSend }: { canSend: boolean }) {
   const [configured, setConfigured] = useState(false);
   const [digestPreview, setDigestPreview] = useState<any>(null);
   const [sending, setSending] = useState(false);
@@ -334,12 +346,14 @@ function SlackSettings() {
           <Button
             variant="contained"
             onClick={handleSendDigest}
-            disabled={!configured || sending}
+            disabled={!configured || sending || !canSend}
           >
             {sending ? 'Sending...' : 'Send Weekly Digest Now'}
           </Button>
           <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
-            Tip: Set up a cron job to call POST /api/slack/digest weekly
+            {canSend
+              ? 'Tip: A weekly cron job is configured to send this automatically every Monday.'
+              : 'Manager or admin access required to send digests.'}
           </Typography>
         </Stack>
       </CardContent>

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getProgramCollection, getOrCreateProgram, prepareProgramUpdate } from '@/lib/program-rollout';
+import { getDb } from '@/lib/mongodb';
+import { extractProgramParticipants, getProgramCollection, getOrCreateProgram, prepareProgramUpdate } from '@/lib/program-rollout';
 import { createProgramId, extractMentions } from '@/lib/program-utils';
-import type { ProgramComment, ProgramEntityType, ProgramParticipant, ProgramRecord } from '@/types/program';
+import type { ProgramComment, ProgramEntityType, ProgramRecord } from '@/types/program';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,19 +51,12 @@ function withEntityUpdate(
   return { ...program, risks: program.risks.map((item) => item.id === entityId ? { ...item, comments: updater(item.comments) } : item) };
 }
 
-function findParticipants(program: ProgramRecord): ProgramParticipant[] {
-  return program.stakeholders
-    .map((stakeholder) => {
-      const email = stakeholder.audit.updatedByEmail || stakeholder.audit.createdByEmail;
-      if (!email) return null;
-      return {
-        name: stakeholder.name,
-        email,
-        role: stakeholder.role,
-        handle: `@${email.split('@')[0].toLowerCase()}`,
-      };
-    })
-    .filter((value): value is ProgramParticipant => Boolean(value));
+async function getActiveAdvocates() {
+  const db = await getDb();
+  const docs = await db.collection('advocates')
+    .find({ isActive: { $ne: false } }, { projection: { name: 1, email: 1, role: 1, title: 1, isActive: 1 } })
+    .toArray();
+  return docs as unknown as Array<{ name?: string; email: string; role?: string; title?: string | null; isActive?: boolean }>;
 }
 
 export async function POST(request: NextRequest) {
@@ -86,8 +80,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'entityType, entityId, and message are required' }, { status: 400 });
     }
 
-    const existing = await getOrCreateProgram(user.name || user.email || 'system');
-    const participants = findParticipants(existing);
+    const [existing, advocates] = await Promise.all([
+      getOrCreateProgram(user.name || user.email || 'system'),
+      getActiveAdvocates(),
+    ]);
+    const participants = extractProgramParticipants(advocates);
 
     const comment: ProgramComment = {
       id: createProgramId('comment'),
