@@ -233,9 +233,9 @@ export default function LandingPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Box
               component="img"
-              src="/mongodb-leaf.png"
-              alt="MongoDB"
-              sx={{ width: 28, height: 42 }}
+              src="/logo.svg"
+              alt="Builder Insights"
+              sx={{ width: 36, height: 36 }}
             />
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
               Builder Insights
@@ -346,12 +346,13 @@ export default function LandingPage() {
               src="/logo.svg"
               alt="Builder Insights - Capture What Builders Say"
               sx={{
-                width: '100%',
-                maxWidth: 700,
-                height: 'auto',
-                borderRadius: 3,
+                width: 180,
+                height: 180,
+                borderRadius: 4,
                 boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
                 border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.05)',
+                p: 2,
               }}
             />
           </Box>
@@ -751,9 +752,9 @@ export default function LandingPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                   <Box
                     component="img"
-                    src="/mongodb-leaf.png"
-                    alt="MongoDB"
-                    sx={{ width: 20, height: 30 }}
+                    src="/logo.svg"
+                    alt="Builder Insights"
+                    sx={{ width: 28, height: 28 }}
                   />
                   <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
                     Builder Insights

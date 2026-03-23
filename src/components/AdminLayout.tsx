@@ -144,17 +144,20 @@ function AdminLayoutInner({ children }: Props) {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Logo */}
       <Box sx={{ p: 2 }}>
-        <Box
-          component="img"
-          src="/logo.svg"
-          alt="Builder Insights"
-          sx={{
-            width: '100%',
-            height: 'auto',
-            borderRadius: 1,
-            mb: 1,
-          }}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <Box
+            component="img"
+            src="/logo.svg"
+            alt="Builder Insights"
+            sx={{
+              width: 40,
+              height: 40,
+            }}
+          />
+          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}>
+            Builder Insights
+          </Typography>
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
             Admin Portal

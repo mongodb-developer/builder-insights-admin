@@ -111,17 +111,20 @@ function LoginForm() {
       <Card sx={{ maxWidth: 420, width: '100%' }}>
         <CardContent sx={{ p: 4 }}>
           {/* Banner */}
-          <Box
-            component="img"
-            src="/logo.svg"
-            alt="Builder Insights"
-            sx={{
-              width: '100%',
-              height: 'auto',
-              borderRadius: 2,
-              mb: 2,
-            }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
+            <Box
+              component="img"
+              src="/logo.svg"
+              alt="Builder Insights"
+              sx={{
+                width: 64,
+                height: 64,
+              }}
+            />
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              Builder Insights
+            </Typography>
+          </Box>
 
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
