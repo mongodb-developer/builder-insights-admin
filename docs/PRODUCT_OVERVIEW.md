@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 What It Does
+## What It Does
 
 Builder Insights helps teams capture developer feedback at conferences, meetups, and customer interactions — then transforms that raw feedback into actionable insights for product teams.
 
@@ -14,7 +14,7 @@ Builder Insights helps teams capture developer feedback at conferences, meetups,
 
 ---
 
-## 📱 Mobile App (iOS)
+## Mobile App (iOS)
 
 - **Stack:** React Native + Expo + React Native Paper
 - **Version:** 1.0.8
@@ -49,10 +49,10 @@ Builder Insights helps teams capture developer feedback at conferences, meetups,
 
 ---
 
-## 💻 Admin Portal (Web)
+## Admin Portal (Web)
 
 - **Stack:** Next.js 16 + Material UI + MongoDB
-- **URL:** https://builder-insights-admin.vercel.app
+- **URL:** https://admin.builderinsights.app
 
 ### Features
 
@@ -100,7 +100,7 @@ Builder Insights helps teams capture developer feedback at conferences, meetups,
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
 Both apps use **passwordless magic link authentication**:
 
@@ -114,7 +114,7 @@ Both apps use **passwordless magic link authentication**:
 
 ---
 
-## 📊 Data Model
+## Data Model
 
 ```
 insights
@@ -147,7 +147,7 @@ advocates
 
 ---
 
-## 🚀 Recent Development (Feb 2026)
+## Recent Development (Feb 2026)
 
 **64 commits** this month including:
 
@@ -164,18 +164,18 @@ advocates
 
 ---
 
-## 🔗 Links
+## Links
 
 | Resource | URL |
 |----------|-----|
-| Admin Portal | https://builder-insights-admin.vercel.app |
+| Admin Portal | https://builderinsights.app |
 | TestFlight | https://testflight.apple.com/join/rAqHXs1Y |
 | Admin Repo | github.com/mongodb-developer/builder-insights-admin |
 | Mobile Repo | github.com/mongodb-developer/builder-insights |
 
 ---
 
-## 📈 Metrics & Health
+## Metrics & Health
 
 - **Admin pages:** 16
 - **Mobile screens:** 17
@@ -185,4 +185,4 @@ advocates
 
 ---
 
-*Built for MongoDB Developer Relations by Mike Lynn + Butter 🧈*
+*Built for MongoDB Builder Relations by Michael Lynn*
