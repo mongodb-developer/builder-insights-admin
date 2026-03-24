@@ -56,6 +56,10 @@ export const collections = {
   bugs: 'bugs',
   programs: 'programs',
   activityLog: 'activity_log',
+  apiKeys: 'api_keys',
+  apiUsage: 'api_usage',
+  feedbackForms: 'feedback_forms',
+  feedbackResponses: 'feedback_responses',
 } as const;
 
 // Bug status types

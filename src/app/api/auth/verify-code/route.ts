@@ -44,16 +44,41 @@ export async function POST(request: NextRequest) {
       
       const testerAccount = TESTER_ACCOUNTS[normalizedEmail];
       if (testerAccount && normalizedCode === TESTER_CODE) {
+        const testerId = `tester_${testerAccount.role}`;
+
+        // Upsert advocate record so profile data persists
+        const now = new Date().toISOString();
+        await db.collection('advocates').updateOne(
+          { _id: testerId as any },
+          {
+            $setOnInsert: {
+              _id: testerId,
+              email: normalizedEmail,
+              name: testerAccount.name,
+              role: testerAccount.role,
+              isAdmin: testerAccount.isAdmin,
+              isActive: true,
+              autoProvisioned: true,
+              createdAt: now,
+            },
+            $set: {
+              lastLoginAt: now,
+              updatedAt: now,
+            },
+          },
+          { upsert: true },
+        );
+
         const jwt = await createToken({
           email: normalizedEmail,
           name: testerAccount.name,
           role: testerAccount.role,
           isAdmin: testerAccount.isAdmin,
-          advocateId: `tester_${testerAccount.role}`,
+          advocateId: testerId,
         });
 
         const testerAdvocate = {
-          _id: `tester_${testerAccount.role}`,
+          _id: testerId,
           email: normalizedEmail,
           name: testerAccount.name,
           role: testerAccount.role,

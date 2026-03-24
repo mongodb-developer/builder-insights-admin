@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const sentiment = searchParams.get('sentiment');
     const priority = searchParams.get('priority');
+    const source = searchParams.get('source');
 
     const col = await getCollection(collections.insights);
     
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
     if (type) filter.type = type;
     if (sentiment) filter.sentiment = sentiment;
     if (priority) filter.priority = priority;
+    if (source) filter.source = source;
 
     const [insights, total] = await Promise.all([
       col.find(filter).sort({ capturedAt: -1 }).skip(skip).limit(limit).toArray(),

@@ -8,11 +8,11 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 
 | Email | Code | Role | Access Level |
 |-------|------|------|--------------|
-| `admin@devrelinsights.app` | `999999` | Admin | Full access, user management, operations |
-| `manager@devrelinsights.app` | `999999` | Manager | View all, manage events, PMO import |
-| `advocate@devrelinsights.app` | `999999` | Advocate | Create/edit own insights |
-| `viewer@devrelinsights.app` | `999999` | Viewer | **Read-only** access |
-| `demo@devrelinsights.app` | `999999` | Advocate | App Store demo account |
+| `admin@builderinsights.app` | `999999` | Admin | Full access, user management, operations |
+| `manager@builderinsights.app` | `999999` | Manager | View all, manage events, PMO import |
+| `advocate@builderinsights.app` | `999999` | Advocate | Create/edit own insights |
+| `viewer@builderinsights.app` | `999999` | Viewer | **Read-only** access |
+| `demo@builderinsights.app` | `999999` | Advocate | App Store demo account |
 
 ## Role Permissions Matrix
 
@@ -41,7 +41,7 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 
 ### 1. Test Viewer Read-Only Access
 
-1. Log in as `viewer@devrelinsights.app` / `999999`
+1. Log in as `viewer@builderinsights.app` / `999999`
 2. Verify you can:
    - View Dashboard, Insights, Events, Leaderboard, World Map
    - Search insights
@@ -56,7 +56,7 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 
 ### 2. Test Advocate Permissions
 
-1. Log in as `advocate@devrelinsights.app` / `999999`
+1. Log in as `advocate@builderinsights.app` / `999999`
 2. Verify you can:
    - Create new insights
    - Edit insights you created
@@ -68,7 +68,7 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 
 ### 3. Test Manager Permissions
 
-1. Log in as `manager@devrelinsights.app` / `999999`
+1. Log in as `manager@builderinsights.app` / `999999`
 2. Verify you can:
    - Create/edit/delete any insight
    - Access PMO Import
@@ -79,7 +79,7 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 
 ### 4. Test Admin Permissions
 
-1. Log in as `admin@devrelinsights.app` / `999999`
+1. Log in as `admin@builderinsights.app` / `999999`
 2. Verify you can:
    - Access everything managers can
    - Access Operations page
@@ -88,7 +88,7 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 
 ### 5. Test Role Escalation
 
-1. Log in as `admin@devrelinsights.app`
+1. Log in as `admin@builderinsights.app`
 2. Go to User Management (`/admin/users`)
 3. Find a viewer user and change their role to Advocate
 4. Log out and log in as that user
@@ -99,7 +99,7 @@ All test accounts use verification code **`999999`**. No email is sent — just 
 The same test accounts work in the iOS mobile app:
 
 1. Open DevRel Insights app
-2. Enter test email (e.g., `viewer@devrelinsights.app`)
+2. Enter test email (e.g., `viewer@builderinsights.app`)
 3. Enter code `999999`
 4. Verify role-appropriate access
 

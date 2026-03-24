@@ -405,6 +405,210 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // ------------------------------------------------------------------
+    // API USAGE — Public API (v1) metrics
+    // ------------------------------------------------------------------
+    if (section === 'all' || section === 'apiUsage') {
+      const [
+        apiOverviewV1,
+        endpointBreakdown,
+        keyUsage,
+        apiTimeline,
+        apiErrorBreakdown,
+      ] = await Promise.all([
+        // Overall v1 API stats
+        telemetry.aggregate([
+          {
+            $match: {
+              eventTimestamp: { $gte: since },
+              category: 'v1_api',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalCalls: { $sum: 1 },
+              successCount: {
+                $sum: { $cond: [{ $eq: ['$properties.success', true] }, 1, 0] },
+              },
+              failCount: {
+                $sum: { $cond: [{ $eq: ['$properties.success', false] }, 1, 0] },
+              },
+              avgLatency: { $avg: '$properties.durationMs' },
+              uniqueKeys: { $addToSet: '$properties.apiKeyPrefix' },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalCalls: 1,
+              successCount: 1,
+              failCount: 1,
+              avgLatency: { $round: ['$avgLatency', 0] },
+              uniqueKeys: { $size: '$uniqueKeys' },
+            },
+          },
+        ]).toArray(),
+
+        // Per-endpoint breakdown for v1
+        telemetry.aggregate([
+          {
+            $match: {
+              eventTimestamp: { $gte: since },
+              category: 'v1_api',
+            },
+          },
+          {
+            $group: {
+              _id: { method: '$properties.method', endpoint: '$properties.endpoint' },
+              calls: { $sum: 1 },
+              failures: {
+                $sum: { $cond: [{ $eq: ['$properties.success', false] }, 1, 0] },
+              },
+              avgLatency: { $avg: '$properties.durationMs' },
+            },
+          },
+          {
+            $project: {
+              method: '$_id.method',
+              endpoint: '$_id.endpoint',
+              calls: 1,
+              failures: 1,
+              successRate: {
+                $cond: [
+                  { $gt: ['$calls', 0] },
+                  { $multiply: [{ $divide: [{ $subtract: ['$calls', '$failures'] }, '$calls'] }, 100] },
+                  0,
+                ],
+              },
+              avgLatency: { $round: ['$avgLatency', 0] },
+              _id: 0,
+            },
+          },
+          { $sort: { calls: -1 } },
+        ]).toArray(),
+
+        // Usage by API key
+        telemetry.aggregate([
+          {
+            $match: {
+              eventTimestamp: { $gte: since },
+              category: 'v1_api',
+              'properties.apiKeyPrefix': { $ne: null },
+            },
+          },
+          {
+            $group: {
+              _id: '$properties.apiKeyPrefix',
+              totalCalls: { $sum: 1 },
+              successCount: {
+                $sum: { $cond: [{ $eq: ['$properties.success', true] }, 1, 0] },
+              },
+              failCount: {
+                $sum: { $cond: [{ $eq: ['$properties.success', false] }, 1, 0] },
+              },
+              avgLatency: { $avg: '$properties.durationMs' },
+              lastUsed: { $max: '$eventTimestamp' },
+            },
+          },
+          {
+            $project: {
+              keyPrefix: '$_id',
+              totalCalls: 1,
+              successCount: 1,
+              failCount: 1,
+              avgLatency: { $round: ['$avgLatency', 0] },
+              lastUsed: 1,
+              _id: 0,
+            },
+          },
+          { $sort: { totalCalls: -1 } },
+        ]).toArray(),
+
+        // Activity timeline (hourly)
+        telemetry.aggregate([
+          {
+            $match: {
+              eventTimestamp: { $gte: since },
+              category: 'v1_api',
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: '%Y-%m-%dT%H:00:00Z', date: '$eventTimestamp' },
+              },
+              calls: { $sum: 1 },
+              failures: {
+                $sum: { $cond: [{ $eq: ['$properties.success', false] }, 1, 0] },
+              },
+              avgLatency: { $avg: '$properties.durationMs' },
+            },
+          },
+          { $sort: { _id: 1 } },
+          {
+            $project: {
+              hour: '$_id',
+              calls: 1,
+              failures: 1,
+              avgLatency: { $round: ['$avgLatency', 0] },
+              _id: 0,
+            },
+          },
+        ]).toArray(),
+
+        // Error breakdown for v1
+        telemetry.aggregate([
+          {
+            $match: {
+              eventTimestamp: { $gte: since },
+              category: 'v1_api',
+              'properties.success': false,
+            },
+          },
+          {
+            $group: {
+              _id: {
+                endpoint: '$properties.endpoint',
+                status: '$properties.status',
+              },
+              count: { $sum: 1 },
+              lastSeen: { $max: '$eventTimestamp' },
+              sampleError: { $first: '$properties.error' },
+              keyPrefix: { $first: '$properties.apiKeyPrefix' },
+            },
+          },
+          { $sort: { count: -1 } },
+          { $limit: 20 },
+          {
+            $project: {
+              endpoint: '$_id.endpoint',
+              status: '$_id.status',
+              count: 1,
+              lastSeen: 1,
+              sampleError: 1,
+              keyPrefix: 1,
+              _id: 0,
+            },
+          },
+        ]).toArray(),
+      ]);
+
+      result.apiUsage = {
+        overview: apiOverviewV1[0] || {
+          totalCalls: 0,
+          successCount: 0,
+          failCount: 0,
+          avgLatency: 0,
+          uniqueKeys: 0,
+        },
+        endpointBreakdown,
+        keyUsage,
+        apiTimeline,
+        apiErrorBreakdown,
+      };
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     console.error('[Analytics] Dashboard error:', error);

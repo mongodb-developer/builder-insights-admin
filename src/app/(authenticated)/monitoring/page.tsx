@@ -163,11 +163,52 @@ interface HealthData {
   syncEvents: { event: string; count: number }[];
 }
 
+interface ApiUsageData {
+  overview: {
+    totalCalls: number;
+    successCount: number;
+    failCount: number;
+    avgLatency: number;
+    uniqueKeys: number;
+  };
+  endpointBreakdown: {
+    method: string;
+    endpoint: string;
+    calls: number;
+    failures: number;
+    successRate: number;
+    avgLatency: number;
+  }[];
+  keyUsage: {
+    keyPrefix: string;
+    totalCalls: number;
+    successCount: number;
+    failCount: number;
+    avgLatency: number;
+    lastUsed: string;
+  }[];
+  apiTimeline: {
+    hour: string;
+    calls: number;
+    failures: number;
+    avgLatency: number;
+  }[];
+  apiErrorBreakdown: {
+    endpoint: string;
+    status: number;
+    count: number;
+    lastSeen: string;
+    sampleError: string;
+    keyPrefix: string;
+  }[];
+}
+
 interface DashboardData {
   overview?: OverviewData;
   users?: UsersData;
   features?: FeaturesData;
   health?: HealthData;
+  apiUsage?: ApiUsageData;
   since: string;
   hours: number;
 }
@@ -755,6 +796,229 @@ function HealthTab({ data }: { data: HealthData }) {
 }
 
 // ====================================================================
+// API USAGE TAB
+// ====================================================================
+
+function ApiUsageTab({ data }: { data: ApiUsageData }) {
+  const overview = data.overview;
+  const successRate = overview.totalCalls > 0
+    ? ((overview.successCount / overview.totalCalls) * 100).toFixed(1)
+    : '—';
+
+  return (
+    <>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard icon={<ApiIcon />} value={overview.totalCalls.toLocaleString()} label="v1 API Calls" />
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <SuccessIcon sx={{ color: Number(successRate) >= 99 ? mongoColors.green : Number(successRate) >= 95 ? '#FFC010' : '#DB3030' }} />
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>{successRate}%</Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary">Success Rate</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard icon={<SpeedIcon />} value={`${Math.round(overview.avgLatency || 0)}ms`} label="Avg Latency" color="#016BF8" />
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard icon={<PersonIcon />} value={overview.uniqueKeys} label="Active API Keys" color={mongoColors.darkGreen} />
+        </Grid>
+      </Grid>
+
+      {/* API Call Timeline */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>API Call Volume &amp; Errors</Typography>
+          {data.apiTimeline.length > 0 ? (
+            <Box sx={{ height: 280 }}>
+              <ResponsiveContainer>
+                <AreaChart data={data.apiTimeline}>
+                  <defs>
+                    <linearGradient id="colorApiCalls" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={mongoColors.green} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={mongoColors.green} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E8EDEB" />
+                  <XAxis dataKey="hour" tickFormatter={formatHour} fontSize={11} />
+                  <YAxis yAxisId="left" fontSize={11} />
+                  <YAxis yAxisId="right" orientation="right" fontSize={11} />
+                  <RechartsTooltip labelFormatter={(l) => new Date(l).toLocaleString()} />
+                  <Area yAxisId="left" type="monotone" dataKey="calls" stroke={mongoColors.green} fill="url(#colorApiCalls)" strokeWidth={2} name="Total Calls" />
+                  <Line yAxisId="right" type="monotone" dataKey="failures" stroke="#DB3030" strokeWidth={2} dot={false} name="Failures" />
+                  <Legend />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Box>
+          ) : (
+            <Typography color="text.secondary" sx={{ py: 8, textAlign: 'center' }}>No API calls in this time range</Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      <Grid container spacing={3}>
+        {/* Endpoint Performance */}
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Endpoint Performance</Typography>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600 }}>Endpoint</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Calls</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Success</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Avg ms</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {data.endpointBreakdown.map((ep, i) => (
+                      <TableRow key={i} hover>
+                        <TableCell>
+                          <Chip label={ep.method} size="small" sx={{ mr: 1, fontFamily: 'monospace', fontSize: 11 }} />
+                          <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>{ep.endpoint}</Typography>
+                        </TableCell>
+                        <TableCell align="right">{ep.calls}</TableCell>
+                        <TableCell align="right">
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={ep.successRate}
+                              sx={{
+                                width: 60, height: 6, borderRadius: 3, bgcolor: '#E8EDEB',
+                                '& .MuiLinearProgress-bar': {
+                                  bgcolor: ep.successRate >= 99 ? mongoColors.green : ep.successRate >= 95 ? '#FFC010' : '#DB3030',
+                                },
+                              }}
+                            />
+                            <Typography variant="caption">{ep.successRate.toFixed(0)}%</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right">{ep.avgLatency}ms</TableCell>
+                      </TableRow>
+                    ))}
+                    {data.endpointBreakdown.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>No API calls recorded yet</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Usage by Key */}
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Usage by API Key</Typography>
+              {data.keyUsage.length > 0 ? (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 600 }}>Key</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Calls</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Errors</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Last Used</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {data.keyUsage.map((k, i) => (
+                        <TableRow key={i} hover>
+                          <TableCell>
+                            <Chip label={k.keyPrefix + '...'} size="small" sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+                          </TableCell>
+                          <TableCell align="right">{k.totalCalls}</TableCell>
+                          <TableCell align="right">
+                            <Typography
+                              variant="body2"
+                              sx={{ color: k.failCount > 0 ? '#DB3030' : 'text.primary' }}
+                            >
+                              {k.failCount}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">{formatTimeAgo(k.lastUsed)}</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ py: 4, textAlign: 'center' }}>
+                  <ApiIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                  <Typography color="text.secondary">No API key usage yet</Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* API Errors */}
+      {data.apiErrorBreakdown.length > 0 && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              <ErrorIcon sx={{ fontSize: 20, mr: 1, verticalAlign: 'text-bottom', color: '#DB3030' }} />
+              API Errors
+            </Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Endpoint</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Key</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Count</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Error</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Last Seen</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.apiErrorBreakdown.map((err, i) => (
+                    <TableRow key={i} hover>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{err.endpoint}</TableCell>
+                      <TableCell>
+                        <Chip label={err.status || 'ERR'} size="small" color="error" sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+                      </TableCell>
+                      <TableCell>
+                        {err.keyPrefix ? (
+                          <Chip label={err.keyPrefix + '...'} size="small" sx={{ fontFamily: 'monospace', fontSize: 10 }} />
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell align="right">{err.count}</TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ maxWidth: 200, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {err.sampleError || '—'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption">{formatTimeAgo(err.lastSeen)}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  );
+}
+
+// ====================================================================
 // MAIN PAGE
 // ====================================================================
 
@@ -852,6 +1116,7 @@ export default function MonitoringPage() {
           <Tab label="User Map" icon={<GlobeIcon />} iconPosition="start" />
           <Tab label="Features" icon={<TouchIcon />} iconPosition="start" />
           <Tab label="App Health" icon={<SpeedIcon />} iconPosition="start" />
+          <Tab label="API Usage" icon={<ApiIcon />} iconPosition="start" />
         </Tabs>
       </Paper>
 
@@ -860,6 +1125,8 @@ export default function MonitoringPage() {
       {activeTab === 1 && data?.users && <UserMapTab data={data.users} />}
       {activeTab === 2 && data?.features && <FeaturesTab data={data.features} />}
       {activeTab === 3 && data?.health && <HealthTab data={data.health} />}
+
+      {activeTab === 4 && data?.apiUsage && <ApiUsageTab data={data.apiUsage} />}
 
       {/* Empty state when a section has no data */}
       {activeTab === 0 && !data?.overview && !loading && (
@@ -873,6 +1140,9 @@ export default function MonitoringPage() {
       )}
       {activeTab === 3 && !data?.health && !loading && (
         <Alert severity="info">No API health data available yet. Metrics will appear after the app makes API calls.</Alert>
+      )}
+      {activeTab === 4 && !data?.apiUsage && !loading && (
+        <Alert severity="info">No public API usage data yet. Metrics will appear once third-party applications make API calls using their API keys.</Alert>
       )}
     </Box>
   );

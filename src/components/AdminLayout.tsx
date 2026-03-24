@@ -39,10 +39,16 @@ import {
   Build as BuildIcon,
   AccountTree as ProgramIcon,
   Monitor as MonitoringIcon,
+  VpnKey as ApiKeyIcon,
+  Code as DeveloperIcon,
+  Person as PersonIcon,
+  DynamicForm as FormsIcon,
 } from '@mui/icons-material';
 import { mongoColors } from '@/theme';
 import BugReportFab from './BugReportFab';
 import { HelpProvider, useHelp } from './help';
+import ProfileCompletenessBanner from './ProfileCompletenessBanner';
+import ProfileEditDialog from './ProfileEditDialog';
 
 const DRAWER_WIDTH = 260;
 
@@ -52,6 +58,7 @@ const navItems = [
   { divider: true },
   { label: 'Events', href: '/events', icon: <EventIcon /> },
   { label: 'Insights', href: '/insights', icon: <InsightIcon /> },
+  { label: 'Feedback Forms', href: '/forms', icon: <FormsIcon />, minRole: 'advocate' },
   { label: 'Advocates', href: '/advocates', icon: <PeopleIcon /> },
   { label: 'Leaderboard', href: '/leaderboard', icon: <EmojiEventsIcon /> },
   { label: 'World Map', href: '/world', icon: <PublicIcon /> },
@@ -59,8 +66,10 @@ const navItems = [
   { label: 'Program', href: '/program', icon: <ProgramIcon />, minRole: 'manager' },
   { label: 'Bug Reports', href: '/bugs', icon: <BugReportIcon /> },
   { label: 'PMO Import', href: '/import', icon: <ImportIcon />, minRole: 'manager' },
+  { label: 'Developer API', href: '/developer/api-keys', icon: <DeveloperIcon /> },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
   { divider: true, adminOnly: true },
+  { label: 'API Keys', href: '/admin/api-keys', icon: <ApiKeyIcon />, adminOnly: true },
   { label: 'Monitoring', href: '/monitoring', icon: <MonitoringIcon />, adminOnly: true },
   { label: 'Operations', href: '/operations', icon: <BuildIcon />, adminOnly: true },
   { label: 'User Management', href: '/admin/users', icon: <AdminIcon />, adminOnly: true },
@@ -91,6 +100,7 @@ function AdminLayoutInner({ children }: Props) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const { openHelp } = useHelp();
 
   // Check user info
@@ -270,8 +280,25 @@ function AdminLayoutInner({ children }: Props) {
         </Button>
       </Box>
 
-      {/* Footer with Logout */}
+      {/* Footer with Profile & Logout */}
       <Box sx={{ p: 2, borderTop: `1px solid ${mongoColors.gray[200]}` }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<PersonIcon />}
+          onClick={() => setProfileDialogOpen(true)}
+          sx={{
+            mb: 1,
+            color: mongoColors.darkGreen,
+            borderColor: `${mongoColors.green}60`,
+            '&:hover': {
+              borderColor: mongoColors.darkGreen,
+              bgcolor: `${mongoColors.green}10`,
+            },
+          }}
+        >
+          My Profile
+        </Button>
         <Button
           fullWidth
           variant="outlined"
@@ -365,8 +392,17 @@ function AdminLayoutInner({ children }: Props) {
           pt: { xs: 8, md: 0 },
         }}
       >
-        <Box sx={{ p: { xs: 2, md: 3 } }}>{children}</Box>
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          <ProfileCompletenessBanner onEditProfile={() => setProfileDialogOpen(true)} />
+          {children}
+        </Box>
       </Box>
+
+      {/* Profile Edit Dialog */}
+      <ProfileEditDialog
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+      />
 
       {/* Bug Report FAB */}
       <BugReportFab />

@@ -44,6 +44,8 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onEdit?: (insight: Insight) => void;
+  /** When provided, controls whether the Edit button is shown for this specific insight. */
+  canEdit?: boolean;
 }
 
 const SENTIMENT_COLORS: Record<string, string> = {
@@ -67,7 +69,7 @@ function formatDuration(ms?: number) {
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
-export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: Props) {
+export default function InsightDetailDrawer({ insight, open, onClose, onEdit, canEdit }: Props) {
   const [slackConfigured, setSlackConfigured] = useState(false);
   const [slackSending, setSlackSending] = useState(false);
   const [slackResult, setSlackResult] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
@@ -157,7 +159,7 @@ export default function InsightDetailDrawer({ insight, open, onClose, onEdit }: 
               </span>
             </Tooltip>
           )}
-          {onEdit && (
+          {onEdit && (canEdit === undefined || canEdit) && (
             <Button
               size="small"
               startIcon={<EditIcon />}

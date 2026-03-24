@@ -57,6 +57,7 @@ import {
 import InsightFormDialog, { InsightFormData } from '@/components/InsightFormDialog';
 import InsightDetailDrawer from '@/components/InsightDetailDrawer';
 import { PageHelp, HelpButton, useHelp } from '@/components/help';
+import { canEditInsight, canDeleteInsight, canCreateInsight } from '@/lib/roles';
 
 interface ReactionCounts {
   like?: number;
@@ -97,6 +98,9 @@ interface Insight {
   advocateId?: string;
   followUpRequired?: boolean;
   capturedAt: string;
+  source?: string;
+  feedbackFormId?: string;
+  respondent?: { name?: string; email?: string };
   reactionCounts?: ReactionCounts;
   reactionTotal?: number;
   aiAnalysis?: AIAnalysis;
@@ -167,14 +171,6 @@ function ReactionDisplay({ counts, total }: { counts?: ReactionCounts; total?: n
   );
 }
 
-// Role hierarchy for permission checks
-const ROLE_LEVELS: Record<string, number> = {
-  admin: 100,
-  manager: 75,
-  advocate: 50,
-  viewer: 25,
-};
-
 export default function InsightsPage() {
   const { openHelp } = useHelp();
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -184,19 +180,38 @@ export default function InsightsPage() {
     type: '',
     sentiment: '',
     priority: '',
+    source: '',
     search: '',
   });
 
-  // User role state
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const canModify = userRole ? (ROLE_LEVELS[userRole] || 0) >= ROLE_LEVELS.advocate : false;
+  // Current user identity (role + advocateId for ownership checks)
+  const [currentUser, setCurrentUser] = useState<{ role: string; advocateId: string | null }>({
+    role: 'viewer',
+    advocateId: null,
+  });
 
-  // Fetch user role on mount
+  // Role-level permission: can this user create new insights at all?
+  const canCreate = canCreateInsight(currentUser.role);
+
+  // Per-insight permission helpers
+  const userCanEdit = useCallback(
+    (insight: Insight) => canEditInsight(currentUser.role, currentUser.advocateId ?? undefined, insight.advocateId),
+    [currentUser.role, currentUser.advocateId],
+  );
+  const userCanDelete = useCallback(
+    (insight: Insight) => canDeleteInsight(currentUser.role, currentUser.advocateId ?? undefined, insight.advocateId),
+    [currentUser.role, currentUser.advocateId],
+  );
+
+  // Fetch user identity on mount
   useEffect(() => {
     fetch('/api/auth/me')
       .then(res => res.ok ? res.json() : Promise.reject('Not authenticated'))
-      .then(data => setUserRole(data.role || 'viewer'))
-      .catch(() => setUserRole('viewer'));
+      .then(data => setCurrentUser({
+        role: data.role || 'viewer',
+        advocateId: data.advocateId || null,
+      }))
+      .catch(() => setCurrentUser({ role: 'viewer', advocateId: null }));
   }, []);
 
   // Dialog state
@@ -231,7 +246,7 @@ export default function InsightsPage() {
   };
 
   const selectAll = () => {
-    setSelectedIds(new Set(paginatedInsights.map((i) => i._id)));
+    setSelectedIds(new Set(paginatedInsights.filter(userCanEdit).map((i) => i._id)));
   };
 
   const clearSelection = () => {
@@ -336,6 +351,11 @@ export default function InsightsPage() {
   }, [loadInsights, loadEvents]);
 
   const filteredInsights = insights.filter((insight) => {
+    // Source filter (client-side since API doesn't support it yet)
+    if (filters.source) {
+      const insightSource = insight.source || 'web'; // Default to 'web' for legacy insights
+      if (insightSource !== filters.source) return false;
+    }
     if (filters.search) {
       const search = filters.search.toLowerCase();
       return (
@@ -498,7 +518,7 @@ export default function InsightsPage() {
               <Tooltip title="Card View"><ViewModule /></Tooltip>
             </ToggleButton>
           </ToggleButtonGroup>
-          {canModify && (
+          {canCreate && (
             <Button
               variant="contained"
               startIcon={<Add />}
@@ -573,12 +593,26 @@ export default function InsightsPage() {
                 <MenuItem value="Low">Low</MenuItem>
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Source</InputLabel>
+              <Select
+                value={filters.source}
+                label="Source"
+                onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+              >
+                <MenuItem value="">All Sources</MenuItem>
+                <MenuItem value="mobile">Mobile App</MenuItem>
+                <MenuItem value="web">Web</MenuItem>
+                <MenuItem value="api">API</MenuItem>
+                <MenuItem value="feedback_form">Feedback Form</MenuItem>
+              </Select>
+            </FormControl>
           </Stack>
         </CardContent>
       </Card>
 
       {/* Bulk Action Bar */}
-      {canModify && selectedIds.size > 0 && (
+      {canCreate && selectedIds.size > 0 && (
         <Card sx={{ mb: 2, border: '1px solid', borderColor: 'primary.main', bgcolor: 'primary.50' }}>
           <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
@@ -697,7 +731,7 @@ export default function InsightsPage() {
             <Typography color="text.secondary" sx={{ mb: 2 }}>
               Add insights manually or capture them from the mobile app.
             </Typography>
-            {canModify && (
+            {canCreate && (
               <Button variant="outlined" startIcon={<Add />} onClick={handleAddNew}>
                 Add First Insight
               </Button>
@@ -711,12 +745,12 @@ export default function InsightsPage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  {canModify && (
+                  {canCreate && (
                     <TableCell padding="checkbox">
                       <Checkbox
                         size="small"
-                        checked={paginatedInsights.length > 0 && paginatedInsights.every((i) => selectedIds.has(i._id))}
-                        indeterminate={paginatedInsights.some((i) => selectedIds.has(i._id)) && !paginatedInsights.every((i) => selectedIds.has(i._id))}
+                        checked={paginatedInsights.length > 0 && paginatedInsights.filter(userCanEdit).every((i) => selectedIds.has(i._id))}
+                        indeterminate={paginatedInsights.some((i) => selectedIds.has(i._id)) && !paginatedInsights.filter(userCanEdit).every((i) => selectedIds.has(i._id))}
                         onChange={(e) => {
                           if (e.target.checked) selectAll();
                           else clearSelection();
@@ -744,13 +778,15 @@ export default function InsightsPage() {
                     sx={{ cursor: 'pointer' }}
                     onClick={() => handleViewDetail(insight)}
                   >
-                    {canModify && (
+                    {canCreate && (
                       <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          size="small"
-                          checked={selectedIds.has(insight._id)}
-                          onChange={() => toggleSelect(insight._id)}
-                        />
+                        {userCanEdit(insight) ? (
+                          <Checkbox
+                            size="small"
+                            checked={selectedIds.has(insight._id)}
+                            onChange={() => toggleSelect(insight._id)}
+                          />
+                        ) : null}
                       </TableCell>
                     )}
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -768,6 +804,9 @@ export default function InsightsPage() {
                           : insight.text}
                       </Typography>
                       <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
+                        {insight.source === 'feedback_form' && (
+                          <Chip label="Form" size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 600 }} />
+                        )}
                         {insight.audioIntelligence && (
                           <Chip icon={<MicIcon sx={{ fontSize: 12 }} />} label={formatDuration(insight.audioIntelligence.durationMs)} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
                         )}
@@ -852,7 +891,7 @@ export default function InsightsPage() {
                       <ReactionDisplay counts={insight.reactionCounts} total={insight.reactionTotal} />
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      {canModify ? (
+                      {userCanEdit(insight) ? (
                         <Stack direction="row" spacing={0}>
                           <Tooltip title="Edit">
                             <IconButton size="small" onClick={() => handleEdit(insight)}>
@@ -914,7 +953,7 @@ export default function InsightsPage() {
                   <CardContent sx={{ flex: 1 }}>
                     {/* Header: Checkbox + Sentiment + Type + Priority + AI + Reactions */}
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
-                      {canModify && (
+                      {userCanEdit(insight) && (
                         <Checkbox
                           size="small"
                           checked={selectedIds.has(insight._id)}
@@ -930,6 +969,9 @@ export default function InsightsPage() {
                         size="small"
                         color={priorityColors[insight.priority] || 'default'}
                       />
+                      {insight.source === 'feedback_form' && (
+                        <Chip label="Form" size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 600 }} />
+                      )}
                       {(insight.aiDistillation?.summary || insight.aiAnalysis?.summary) && (
                         <Tooltip title={insight.aiDistillation?.summary || insight.aiAnalysis?.summary || ''}>
                           <Chip
@@ -1011,7 +1053,7 @@ export default function InsightsPage() {
                     </Stack>
                   </CardContent>
 
-                  {canModify && (
+                  {userCanEdit(insight) && (
                     <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }} onClick={(e) => e.stopPropagation()}>
                       <Tooltip title="Edit">
                         <IconButton size="small" onClick={() => handleEdit(insight)}>
@@ -1060,10 +1102,11 @@ export default function InsightsPage() {
           setDetailDrawerOpen(false);
           setSelectedInsight(null);
         }}
-        onEdit={canModify ? (insight) => {
+        canEdit={selectedInsight ? userCanEdit(selectedInsight) : false}
+        onEdit={(insight) => {
           setDetailDrawerOpen(false);
           handleEdit(insight);
-        } : undefined}
+        }}
       />
 
       {/* Snackbar */}

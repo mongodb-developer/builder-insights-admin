@@ -20,6 +20,7 @@ export async function GET() {
       name: user.name,
       role: effectiveRole,
       isAdmin: effectiveIsAdmin,
+      advocateId: user.advocateId || null,
     });
   } catch (error) {
     console.error('[GET /api/auth/me]', error);

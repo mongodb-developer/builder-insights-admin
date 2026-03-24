@@ -167,6 +167,8 @@ export type Sentiment = 'Positive' | 'Neutral' | 'Negative';
 
 export type Priority = 'Low' | 'Medium' | 'High' | 'Critical';
 
+export type InsightSource = 'mobile' | 'web' | 'api' | 'feedback_form';
+
 export interface Insight {
   _id: string;
   
@@ -206,6 +208,14 @@ export interface Insight {
   // Attribution
   advocateId: string;
   advocateName: string;
+  
+  // Source tracking
+  source?: InsightSource;
+  feedbackFormId?: string;
+  respondent?: {
+    name?: string;
+    email?: string;
+  };
   
   // Social
   upvotes: string[];
@@ -288,6 +298,19 @@ export interface Advocate {
   isActive: boolean;
   avatarUrl?: string;
 
+  // Profile / contact fields
+  linkedinUrl?: string;         // LinkedIn profile URL
+  phone?: string;               // Contact phone number
+  bio?: string;                 // Short bio / about me
+  location?: string;            // City, State or City, Country
+  timezone?: string;            // e.g. "America/New_York"
+  github?: string;              // GitHub username or URL
+  twitter?: string;             // Twitter/X handle or URL
+
+  // Provisioning
+  autoProvisioned?: boolean;    // True if auto-created on first login
+  profileCompletedAt?: string;  // ISO timestamp when profile was first completed
+
   // Stats (may be stored or computed)
   insightCount?: number;
   eventCount?: number;
@@ -317,4 +340,94 @@ export interface User {
   isAdmin: boolean;
   advocateId?: string;
   createdAt: string;
+}
+
+// ============================================================================
+// FEEDBACK FORMS
+// ============================================================================
+
+export type FeedbackFormStatus = 'draft' | 'active' | 'closed';
+
+export type FeedbackFormTemplate = 'session_feedback' | 'product_feedback' | 'general_feedback';
+
+export type FeedbackQuestionType =
+  | 'rating'
+  | 'free_text'
+  | 'single_choice'
+  | 'multi_choice'
+  | 'insight_type'
+  | 'product_area'
+  | 'sentiment'
+  | 'priority';
+
+export interface FeedbackQuestion {
+  _id: string;
+  order: number;
+  type: FeedbackQuestionType;
+  label: string;
+  description?: string;
+  required: boolean;
+  options?: string[];
+  mapsToInsightField?: string;
+}
+
+export interface FeedbackFormSettings {
+  collectName: boolean;
+  collectEmail: boolean;
+  maxResponses?: number | null;
+  closesAt?: string | null;
+  thankYouMessage?: string;
+}
+
+export interface FeedbackForm {
+  _id: string;
+  title: string;
+  description?: string;
+  status: FeedbackFormStatus;
+  template: FeedbackFormTemplate;
+
+  // Context
+  eventId?: string;
+  sessionId?: string;
+  eventName?: string;
+  sessionTitle?: string;
+  advocateId: string;
+  advocateName: string;
+
+  // Form definition
+  questions: FeedbackQuestion[];
+
+  // Settings
+  settings: FeedbackFormSettings;
+
+  // Sharing
+  slug: string;
+
+  // Stats (denormalized)
+  responseCount: number;
+  lastResponseAt?: string;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackResponseAnswer {
+  questionId: string;
+  value: string | string[] | number;
+}
+
+export interface FeedbackResponse {
+  _id: string;
+  formId: string;
+
+  respondentName?: string;
+  respondentEmail?: string;
+
+  answers: FeedbackResponseAnswer[];
+
+  insightId: string;
+
+  submittedAt: string;
+  ipHash?: string;
 }

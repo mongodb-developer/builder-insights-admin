@@ -73,6 +73,8 @@ function getCorsHeaders(request: NextRequest): Record<string, string> {
 const FULLY_PUBLIC_PATHS = [
   '/api/auth',   // Auth flow (magic-link, verify-code, logout)
   '/api/health', // Health check
+  '/api/v1',     // Public API — uses its own API key auth (handled in route handlers)
+  '/f/',         // Public feedback forms page
 ];
 
 // Public for GET only — reads allowed without auth (mobile app read access)
@@ -89,6 +91,10 @@ const PUBLIC_GET_PATHS = [
   '/api/slack',
   '/api/cron',  // Cron routes handle their own auth via CRON_SECRET
 ];
+
+// Feedback form public routes — handled specially below
+// GET /api/feedback/[slug] and POST /api/feedback/[slug]/submit are public
+// /api/feedback/forms/* requires advocate+ auth (handled by route handlers)
 
 // Require admin role
 const ADMIN_PATHS = [
@@ -119,6 +125,7 @@ const ADVOCATE_MUTATION_PATHS = [
   '/api/attachments',
   '/api/analytics',
   '/api/stats',
+  '/api/feedback/forms',
 ];
 
 // Require admin or manager role for mutations
@@ -237,6 +244,13 @@ export async function middleware(request: NextRequest) {
       return addCorsHeaders(NextResponse.next());
     }
     return NextResponse.next();
+  }
+
+  // --- Public feedback form routes ---
+  // /api/feedback/[slug] (GET) and /api/feedback/[slug]/submit (POST) are public
+  // but /api/feedback/forms/* requires auth (falls through to normal auth checks)
+  if (pathname.startsWith('/api/feedback/') && !pathname.startsWith('/api/feedback/forms')) {
+    return addCorsHeaders(NextResponse.next());
   }
 
   // --- Public GET paths (read-only without auth) ---

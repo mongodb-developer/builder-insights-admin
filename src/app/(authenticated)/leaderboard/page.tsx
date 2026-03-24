@@ -171,7 +171,18 @@ export default function LeaderboardPage() {
     );
   }
 
-  const hasData = stats && Object.values(stats).some((v) => Object.keys(v).length > 0);
+  // Normalise stats sub-objects – the API may return null/undefined for any of
+  // these when there are no matching documents in the aggregation pipeline.
+  const byType = stats?.byType ?? {};
+  const bySentiment = stats?.bySentiment ?? {};
+  const byPriority = stats?.byPriority ?? {};
+  const byProductArea = stats?.byProductArea ?? {};
+
+  const hasData =
+    stats &&
+    [byType, bySentiment, byPriority, byProductArea].some(
+      (v) => Object.keys(v).length > 0,
+    );
 
   if (!hasData) {
     return (
@@ -191,8 +202,8 @@ export default function LeaderboardPage() {
     );
   }
 
-  const totalInsights = Object.values(stats.byType).reduce((a, b) => a + b, 0);
-  const maxProductArea = Math.max(...Object.values(stats.byProductArea), 1);
+  const totalInsights = Object.values(byType).reduce((a, b) => a + b, 0);
+  const maxProductArea = Math.max(...Object.values(byProductArea), 1);
 
   return (
     <Box>
@@ -376,7 +387,7 @@ export default function LeaderboardPage() {
               </Typography>
               <Stack spacing={2} sx={{ mt: 2 }}>
                 {['Positive', 'Neutral', 'Negative'].map((sentiment) => {
-                  const count = stats.bySentiment[sentiment] || 0;
+                  const count = bySentiment[sentiment] || 0;
                   const pct = totalInsights > 0 ? (count / totalInsights) * 100 : 0;
                   return (
                     <Box key={sentiment}>
@@ -423,7 +434,7 @@ export default function LeaderboardPage() {
                 Insight Types
               </Typography>
               <Stack spacing={2} sx={{ mt: 2 }}>
-                {Object.entries(stats.byType)
+                {Object.entries(byType)
                   .sort((a, b) => b[1] - a[1])
                   .map(([type, count]) => {
                     const pct = totalInsights > 0 ? (count / totalInsights) * 100 : 0;
@@ -457,7 +468,7 @@ export default function LeaderboardPage() {
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
                 {['Critical', 'High', 'Medium', 'Low'].map((priority) => {
-                  const count = stats.byPriority[priority] || 0;
+                  const count = byPriority[priority] || 0;
                   const colorMap: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
                     Critical: 'error',
                     High: 'warning',
@@ -486,7 +497,7 @@ export default function LeaderboardPage() {
                 Product Areas
               </Typography>
               <Stack spacing={1.5} sx={{ mt: 2 }}>
-                {Object.entries(stats.byProductArea)
+                {Object.entries(byProductArea)
                   .sort((a, b) => b[1] - a[1])
                   .slice(0, 8)
                   .map(([area, count]) => (
