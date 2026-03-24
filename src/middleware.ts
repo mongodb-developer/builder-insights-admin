@@ -74,7 +74,6 @@ const FULLY_PUBLIC_PATHS = [
   '/api/auth',   // Auth flow (magic-link, verify-code, logout)
   '/api/health', // Health check
   '/api/v1',     // Public API — uses its own API key auth (handled in route handlers)
-  '/f/',         // Public feedback forms page
 ];
 
 // Public for GET only — reads allowed without auth (mobile app read access)
@@ -235,6 +234,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
     }
+    return NextResponse.next();
+  }
+
+  // --- Public feedback form pages (no auth required) ---
+  // /f/[slug] pages are public-facing forms for community developers
+  if (pathname.startsWith('/f/')) {
     return NextResponse.next();
   }
 
