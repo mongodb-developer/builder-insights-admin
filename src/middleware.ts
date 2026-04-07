@@ -6,6 +6,10 @@ import { jwtVerify } from 'jose';
 // CONFIGURATION
 // ============================================================================
 
+// Hostname for the public API subdomain. Requests to this host are restricted
+// to the v1 API routes and the health endpoint — nothing else is served.
+const API_SUBDOMAIN = 'api.builderinsights.app';
+
 const COOKIE_NAME = 'di-session';
 
 // JWT secret — lazy-initialized so the build process can complete without AUTH_SECRET set.
@@ -26,7 +30,15 @@ function getAuthSecret(): Uint8Array {
 }
 
 // CORS: In production, restrict to known origins. In development, allow all.
-function getAllowedOrigins(): string[] | null {
+// The API subdomain always allows cross-origin requests because it uses API key
+// auth (no cookies), so restricting by origin would just block legitimate callers.
+function getAllowedOrigins(request: NextRequest): string[] | null {
+  // API subdomain: always allow all origins — callers authenticate with API keys
+  const host = request.headers.get('host') || '';
+  if (host === API_SUBDOMAIN || host.startsWith(API_SUBDOMAIN + ':')) {
+    return null; // null = allow all
+  }
+
   const envOrigins = process.env.ALLOWED_ORIGINS;
   if (envOrigins) {
     return envOrigins.split(',').map((o) => o.trim()).filter(Boolean);
@@ -41,7 +53,7 @@ function getAllowedOrigins(): string[] | null {
 }
 
 function getCorsHeaders(request: NextRequest): Record<string, string> {
-  const allowedOrigins = getAllowedOrigins();
+  const allowedOrigins = getAllowedOrigins(request);
   const requestOrigin = request.headers.get('origin') || '';
 
   let allowOrigin = '*';
@@ -217,6 +229,23 @@ export async function middleware(request: NextRequest) {
     });
     return response;
   };
+
+  // --- API subdomain gate ---
+  // When requests arrive on api.builderinsights.app, only serve the v1 API
+  // and health endpoint. Everything else gets a 404 so the admin UI, internal
+  // APIs, and authentication routes are never exposed on the public hostname.
+  const host = request.headers.get('host') || '';
+  if (host === API_SUBDOMAIN || host.startsWith(API_SUBDOMAIN + ':')) {
+    if (pathname.startsWith('/api/v1') || pathname === '/api/health') {
+      return addCorsHeaders(NextResponse.next());
+    }
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: 'Not found', message: 'This endpoint is not available on the API subdomain. Use /api/v1/*.' },
+        { status: 404 }
+      )
+    );
+  }
 
   // --- Static files ---
   if (/\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2)$/i.test(pathname)) {

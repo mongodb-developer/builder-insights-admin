@@ -231,6 +231,8 @@ export default function ImportPage() {
         isVirtual: event.isVirtual,
         timezone: event.timezone,
         eventType: event.eventType,
+        engagementType: event.engagementType,
+        region: event.region || event.account?.region,
         isRegional: event.isRegional,
         language: event.language,
         slackChannel: event.slackChannel,
@@ -398,14 +400,17 @@ export default function ImportPage() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, 'success' | 'info' | 'warning' | 'error' | 'default'> = {
-      COMPLETED: 'success',
-      ASSIGNED: 'info',
-      CONFIRMING: 'warning',
-      CANCELLED: 'error',
-      NEEDS_STAFFING: 'error',
-      NEW: 'default',
-      SA_LED: 'default',
-      FYI: 'default',
+      'Completed': 'success',
+      'Delivered': 'success',
+      'Confirmed': 'info',
+      'Scheduled': 'info',
+      'In Progress': 'warning',
+      'In Queue': 'default',
+      'In Hack Queue': 'default',
+      'Cancelled': 'error',
+      'Postponed': 'error',
+      'SA_LED': 'default',
+      'FYI': 'default',
     };
     return colors[status] || 'default';
   };
@@ -662,6 +667,245 @@ export default function ImportPage() {
                 />
               ))}
             </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Debug / Diagnostic Panel */}
+      {mappingResult && parsedEvents.length > 0 && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Import Diagnostics
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Debug information to help identify import issues.
+            </Typography>
+
+            {/* Column Mapping Details */}
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body2" fontWeight={600}>Column Mappings</Typography>
+                  <Chip label={`${mappingResult.mappings.length} mapped`} size="small" color="success" />
+                  {mappingResult.unmappedColumns.length > 0 && (
+                    <Chip label={`${mappingResult.unmappedColumns.length} unmapped`} size="small" color="warning" />
+                  )}
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>CSV Column</TableCell>
+                        <TableCell>Mapped To</TableCell>
+                        <TableCell>Confidence</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {mappingResult.mappings.map((m, i) => (
+                        <TableRow key={i}>
+                          <TableCell><Typography variant="caption" fontFamily="monospace">{m.csvColumn}</Typography></TableCell>
+                          <TableCell><Chip label={m.field} size="small" variant="outlined" /></TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={m.confidence === 1 ? 'Exact' : `${Math.round(m.confidence * 100)}%`} 
+                              size="small" 
+                              color={m.confidence === 1 ? 'success' : m.confidence > 0.8 ? 'info' : 'warning'}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                {mappingResult.unmappedColumns.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" fontWeight={600} color="warning.main" gutterBottom>
+                      Unmapped Columns (ignored during import):
+                    </Typography>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                      {mappingResult.unmappedColumns.map((col) => (
+                        <Chip key={col} label={col} size="small" color="warning" variant="outlined" sx={{ mb: 0.5 }} />
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Data Quality Summary */}
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body2" fontWeight={600}>Data Quality</Typography>
+                  {(() => {
+                    const missingRegion = parsedEvents.filter(e => e.valid && !e.region).length;
+                    const missingDates = parsedEvents.filter(e => e.valid && !e.startDate).length;
+                    const missingType = parsedEvents.filter(e => e.valid && e.eventType === 'OTHER').length;
+                    const hasIssues = missingRegion > 0 || missingDates > 0 || missingType > 0;
+                    return hasIssues ? (
+                      <Chip label="Issues found" size="small" color="warning" />
+                    ) : (
+                      <Chip label="All good" size="small" color="success" />
+                    );
+                  })()}
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  {(() => {
+                    const issues: { label: string; count: number; severity: 'error' | 'warning' | 'info' }[] = [];
+                    const missingRegion = parsedEvents.filter(e => e.valid && !e.region).length;
+                    const missingDates = parsedEvents.filter(e => e.valid && !e.startDate).length;
+                    const missingType = parsedEvents.filter(e => e.valid && e.eventType === 'OTHER').length;
+                    const missingAccount = parsedEvents.filter(e => e.valid && !e.isRegional && !e.account?.name).length;
+                    const noAssignments = parsedEvents.filter(e => e.valid && e.assignments.length === 0).length;
+                    const withWarnings = parsedEvents.filter(e => e.warnings.length > 0).length;
+                    const withErrors = parsedEvents.filter(e => e.errors.length > 0).length;
+
+                    if (withErrors > 0) issues.push({ label: `${withErrors} events with errors (marked invalid)`, count: withErrors, severity: 'error' });
+                    if (missingRegion > 0) issues.push({ label: `${missingRegion} events missing region`, count: missingRegion, severity: 'warning' });
+                    if (missingDates > 0) issues.push({ label: `${missingDates} events missing start date`, count: missingDates, severity: 'warning' });
+                    if (missingType > 0) issues.push({ label: `${missingType} events defaulted to "Other" type`, count: missingType, severity: 'info' });
+                    if (missingAccount > 0) issues.push({ label: `${missingAccount} non-regional events missing account name`, count: missingAccount, severity: 'info' });
+                    if (noAssignments > 0) issues.push({ label: `${noAssignments} events with no DA assignments`, count: noAssignments, severity: 'info' });
+                    if (withWarnings > 0) issues.push({ label: `${withWarnings} events with warnings`, count: withWarnings, severity: 'info' });
+
+                    if (issues.length === 0) {
+                      return <Alert severity="success">All events passed quality checks.</Alert>;
+                    }
+
+                    return issues.map((issue, i) => (
+                      <Alert key={i} severity={issue.severity} variant="outlined">
+                        {issue.label}
+                      </Alert>
+                    ));
+                  })()}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Region Distribution */}
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="body2" fontWeight={600}>Region Distribution</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {Object.entries(
+                    parsedEvents.filter(e => e.valid).reduce((acc, e) => {
+                      const r = e.region || e.account?.region || 'Unknown';
+                      acc[r] = (acc[r] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).sort((a, b) => b[1] - a[1]).map(([region, count]) => (
+                    <Chip
+                      key={region}
+                      label={`${region}: ${count}`}
+                      size="small"
+                      sx={{
+                        mb: 0.5,
+                        bgcolor: region === 'Unknown' ? undefined : 
+                          region === 'AMER' ? '#2196f3' :
+                          region === 'EMEA' ? '#9c27b0' :
+                          region === 'APAC' ? '#ff9800' :
+                          region === 'LATAM' ? '#4caf50' : undefined,
+                        color: region === 'Unknown' ? undefined : 'white',
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Event Type Distribution */}
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="body2" fontWeight={600}>Event Type Distribution</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {Object.entries(
+                    parsedEvents.filter(e => e.valid).reduce((acc, e) => {
+                      acc[e.engagementType || e.eventType] = (acc[e.engagementType || e.eventType] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                    <Chip key={type} label={`${type}: ${count}`} size="small" variant="outlined" sx={{ mb: 0.5 }} />
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Invalid Events Detail */}
+            {invalidCount > 0 && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" fontWeight={600}>Invalid Events</Typography>
+                    <Chip label={invalidCount} size="small" color="error" />
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Row</TableCell>
+                          <TableCell>Name</TableCell>
+                          <TableCell>Errors</TableCell>
+                          <TableCell>Raw Status</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {parsedEvents.filter(e => !e.valid).map((event, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{i + 1}</TableCell>
+                            <TableCell>
+                              <Typography variant="caption" fontFamily="monospace">
+                                {event.name || '(empty)'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              {event.errors.map((err, j) => (
+                                <Chip key={j} label={err} size="small" color="error" variant="outlined" sx={{ mr: 0.5, mb: 0.5 }} />
+                              ))}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">
+                                {event.status}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Raw CSV Headers */}
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="body2" fontWeight={600}>Raw CSV Headers ({headers.length})</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                  {headers.map((h, i) => (
+                    <Chip 
+                      key={i} 
+                      label={h || `(empty col ${i})`} 
+                      size="small" 
+                      variant="outlined" 
+                      sx={{ mb: 0.5, fontFamily: 'monospace', fontSize: '0.7rem' }} 
+                    />
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
           </CardContent>
         </Card>
       )}

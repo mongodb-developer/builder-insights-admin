@@ -10,11 +10,15 @@
 // ============================================================================
 
 export type EventStatus = 
-  | 'COMPLETED'
-  | 'ASSIGNED'
-  | 'CONFIRMING'
-  | 'CANCELLED'
-  | 'NEEDS_STAFFING'
+  | 'Completed'
+  | 'Delivered'
+  | 'Confirmed'
+  | 'Scheduled'
+  | 'In Progress'
+  | 'Cancelled'
+  | 'Postponed'
+  | 'In Queue'
+  | 'In Hack Queue'
   | 'NEW'
   | 'SA_LED'
   | 'FYI';
@@ -70,6 +74,10 @@ export interface ParsedEvent {
   
   // Type
   eventType: EventType;
+  engagementType?: string;
+  
+  // Region (top-level for display/filtering)
+  region?: Region;
   
   // Account
   account?: {
@@ -153,21 +161,28 @@ export const KNOWN_DAS = [
 // ============================================================================
 
 const STATUS_MAP: Record<string, EventStatus> = {
-  '🥳 completed': 'COMPLETED',
-  'completed': 'COMPLETED',
-  '✔️ all assigned!': 'ASSIGNED',
-  'all assigned': 'ASSIGNED',
-  'assigned': 'ASSIGNED',
-  '🤯 confirming dates': 'CONFIRMING',
-  'confirming dates': 'CONFIRMING',
-  'confirming': 'CONFIRMING',
-  '😫 cancelled': 'CANCELLED',
-  'cancelled': 'CANCELLED',
-  'canceled': 'CANCELLED',
-  '🔝 needs staffing': 'NEEDS_STAFFING',
-  'needs staffing': 'NEEDS_STAFFING',
-  '⭐new': 'NEW',
-  'new': 'NEW',
+  '🥳 completed': 'Completed',
+  'completed': 'Completed',
+  'delivered': 'Delivered',
+  '✔️ all assigned!': 'Confirmed',
+  'all assigned': 'Confirmed',
+  'assigned': 'Confirmed',
+  'confirmed': 'Confirmed',
+  '🤯 confirming dates': 'Scheduled',
+  'confirming dates': 'Scheduled',
+  'confirming': 'Scheduled',
+  'scheduled': 'Scheduled',
+  'in progress': 'In Progress',
+  '😫 cancelled': 'Cancelled',
+  'cancelled': 'Cancelled',
+  'canceled': 'Cancelled',
+  'postponed': 'Postponed',
+  '🔝 needs staffing': 'In Queue',
+  'needs staffing': 'In Queue',
+  'in queue': 'In Queue',
+  'in hack queue': 'In Hack Queue',
+  '⭐new': 'In Queue',
+  'new': 'In Queue',
   'sa-led': 'SA_LED',
   'sa led': 'SA_LED',
   '😎 fyi - no assignment needed': 'FYI',
@@ -176,9 +191,9 @@ const STATUS_MAP: Record<string, EventStatus> = {
 };
 
 export function normalizeStatus(raw: string | undefined | null): EventStatus {
-  if (!raw) return 'NEW';
+  if (!raw) return 'In Queue';
   const normalized = raw.toLowerCase().trim();
-  return STATUS_MAP[normalized] || 'NEW';
+  return STATUS_MAP[normalized] || 'In Queue';
 }
 
 // ============================================================================
@@ -210,6 +225,19 @@ export function normalizeEventType(raw: string | undefined | null): EventType {
   const normalized = raw.toLowerCase().trim();
   return EVENT_TYPE_MAP[normalized] || 'OTHER';
 }
+
+// Human-readable display names for event types
+export const EVENT_TYPE_DISPLAY: Record<EventType, string> = {
+  DEV_DAY_1_1: '1:1 Dev Day',
+  DEV_DAY_REGIONAL: 'Regional Dev Day',
+  WEBINAR: 'Workshop/Webinar',
+  BUILD_LEARN: 'Build & Learn',
+  OFFICE_HOURS: 'Office Hours',
+  HACKATHON: 'Hackathon',
+  ARCHITECT_DAY: 'Architect Day',
+  VIRTUAL_PRIMER: 'Virtual Primer',
+  OTHER: 'Other',
+};
 
 // ============================================================================
 // TRAVEL STATUS NORMALIZATION
@@ -502,6 +530,13 @@ export function transformRow(
   const startDate = parseDate(fields.startDate);
   const endDate = parseDate(fields.endDate);
   
+  // Determine region from account segment, event region field, or other sources
+  const eventRegion: Region | undefined = segmentInfo.region 
+    || (fields.eventRegion?.toUpperCase() as Region) 
+    || undefined;
+
+  const eventType = normalizeEventType(fields.eventType);
+
   // Build event
   const event: ParsedEvent = {
     name: fields.name || fields.location || 'Unnamed Event',
@@ -515,7 +550,11 @@ export function transformRow(
     isVirtual: locationInfo.isVirtual,
     timezone: locationInfo.timezone,
     
-    eventType: normalizeEventType(fields.eventType),
+    eventType,
+    
+    // Top-level region and engagementType for the events page display/filtering
+    region: eventRegion,
+    engagementType: EVENT_TYPE_DISPLAY[eventType] || eventType,
     
     isRegional,
     

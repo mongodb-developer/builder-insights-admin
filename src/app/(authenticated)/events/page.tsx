@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -28,6 +28,9 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Pagination,
+  Alert,
+  Collapse,
 } from '@mui/material';
 import {
   Add,
@@ -41,6 +44,10 @@ import {
   LocationOn,
   Lightbulb,
   Business,
+  FilterList,
+  Clear,
+  Videocam,
+  MeetingRoom,
 } from '@mui/icons-material';
 import { PageHelp, HelpButton, useHelp } from '@/components/help';
 
@@ -50,13 +57,17 @@ interface Event {
   status: string;
   region: string;
   engagementType: string;
+  eventType?: string;
   location: string;
   startDate?: string;
   endDate?: string;
   insightCount?: number;
-  account?: { name: string };
+  account?: { name: string; region?: string };
   description?: string;
   technicalTheme?: string;
+  isVirtual?: boolean;
+  quarter?: string;
+  assignments?: Array<{ advocateName: string; assignmentType: string }>;
 }
 
 const statusColors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -69,6 +80,8 @@ const statusColors: Record<string, 'default' | 'primary' | 'success' | 'warning'
   'Completed': 'success',
   'Postponed': 'error',
   'Cancelled': 'error',
+  'SA_LED': 'default',
+  'FYI': 'default',
 };
 
 const regionColors: Record<string, string> = {
@@ -78,24 +91,34 @@ const regionColors: Record<string, string> = {
   'LATAM': '#4caf50',
 };
 
+const ITEMS_PER_PAGE = 24;
+
 export default function EventsPage() {
   const { openHelp } = useHelp();
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [regionFilter, setRegionFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [quarterFilter, setQuarterFilter] = useState<string>('all');
+  const [virtualFilter, setVirtualFilter] = useState<string>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [page, setPage] = useState(1);
 
+  // Load all events (high limit) for client-side filtering
   useEffect(() => {
     async function loadEvents() {
       try {
-        const res = await fetch('/api/events');
+        const res = await fetch('/api/events?limit=2000');
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         setEvents(data.events || []);
+        setTotal(data.total || 0);
       } catch (err) {
         setError('Failed to load events. Check your MongoDB connection.');
       } finally {
@@ -105,23 +128,61 @@ export default function EventsPage() {
     loadEvents();
   }, []);
 
+  // Derive the effective region for an event (top-level or from account)
+  const getEventRegion = (event: Event): string => {
+    return event.region || event.account?.region || '';
+  };
+
+  // Derive the effective type for an event
+  const getEventType = (event: Event): string => {
+    return event.engagementType || event.eventType || '';
+  };
+
   // Filter events
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
       searchQuery === '' ||
-      event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.account?.name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
-    const matchesRegion = regionFilter === 'all' || event.region === regionFilter;
+    const matchesRegion = regionFilter === 'all' || getEventRegion(event) === regionFilter;
+    const matchesType = typeFilter === 'all' || getEventType(event) === typeFilter;
+    const matchesQuarter = quarterFilter === 'all' || event.quarter === quarterFilter;
+    const matchesVirtual = virtualFilter === 'all' || 
+      (virtualFilter === 'virtual' && event.isVirtual) ||
+      (virtualFilter === 'in-person' && !event.isVirtual);
 
-    return matchesSearch && matchesStatus && matchesRegion;
+    return matchesSearch && matchesStatus && matchesRegion && matchesType && matchesQuarter && matchesVirtual;
   });
 
-  // Get unique statuses and regions for filters
-  const statuses = [...new Set(events.map((e) => e.status))].filter(Boolean);
-  const regions = [...new Set(events.map((e) => e.region))].filter(Boolean);
+  // Paginated events
+  const paginatedEvents = filteredEvents.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const pageCount = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, regionFilter, typeFilter, quarterFilter, virtualFilter]);
+
+  // Get unique values for filter dropdowns (from all events, using fallback logic)
+  const statuses = [...new Set(events.map((e) => e.status))].filter(Boolean).sort();
+  const regions = [...new Set(events.map((e) => getEventRegion(e)))].filter(Boolean).sort();
+  const types = [...new Set(events.map((e) => getEventType(e)))].filter(Boolean).sort();
+  const quarters = [...new Set(events.map((e) => e.quarter))].filter(Boolean).sort();
+
+  const activeFilterCount = [statusFilter, regionFilter, typeFilter, quarterFilter, virtualFilter]
+    .filter(f => f !== 'all').length;
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setRegionFilter('all');
+    setTypeFilter('all');
+    setQuarterFilter('all');
+    setVirtualFilter('all');
+  }, []);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
@@ -241,6 +302,13 @@ export default function EventsPage() {
                   <Search />
                 </InputAdornment>
               ),
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchQuery('')}>
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
             }}
             sx={{ minWidth: 250 }}
           />
@@ -273,6 +341,30 @@ export default function EventsPage() {
             </Select>
           </FormControl>
 
+          <Button
+            size="small"
+            variant={showAdvancedFilters ? 'contained' : 'outlined'}
+            startIcon={<FilterList />}
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            More Filters
+            {activeFilterCount > 0 && (
+              <Chip 
+                label={activeFilterCount} 
+                size="small" 
+                color="primary" 
+                sx={{ ml: 1, height: 20, minWidth: 20, fontSize: '0.7rem' }} 
+              />
+            )}
+          </Button>
+
+          {(activeFilterCount > 0 || searchQuery) && (
+            <Button size="small" startIcon={<Clear />} onClick={clearAllFilters} color="secondary">
+              Clear
+            </Button>
+          )}
+
           <Box sx={{ flexGrow: 1 }} />
 
           <ToggleButtonGroup
@@ -289,116 +381,180 @@ export default function EventsPage() {
             </ToggleButton>
           </ToggleButtonGroup>
         </Stack>
+
+        {/* Advanced Filters */}
+        <Collapse in={showAdvancedFilters}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Event Type</InputLabel>
+              <Select
+                value={typeFilter}
+                label="Event Type"
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Types</MenuItem>
+                {types.map((type) => (
+                  <MenuItem key={type} value={type}>{type}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Quarter</InputLabel>
+              <Select
+                value={quarterFilter}
+                label="Quarter"
+                onChange={(e) => setQuarterFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Quarters</MenuItem>
+                {quarters.map((q) => (
+                  <MenuItem key={q} value={q}>{q}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Format</InputLabel>
+              <Select
+                value={virtualFilter}
+                label="Format"
+                onChange={(e) => setVirtualFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Formats</MenuItem>
+                <MenuItem value="in-person">In-Person</MenuItem>
+                <MenuItem value="virtual">Virtual</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+        </Collapse>
       </Card>
+
+      {/* Active filter summary */}
+      {total > events.length && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Showing {events.length} of {total} total events. Some events may not be loaded.
+        </Alert>
+      )}
 
       {/* Cards View */}
       {viewMode === 'cards' && (
         <Grid container spacing={3}>
-          {filteredEvents.map((event) => (
-            <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={event._id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 6,
-                  },
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  {/* Status & Region */}
-                  <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                    <Chip
-                      label={event.status}
-                      size="small"
-                      color={statusColors[event.status] || 'default'}
-                    />
-                    <Chip
-                      label={event.region}
-                      size="small"
-                      sx={{
-                        bgcolor: regionColors[event.region] || '#757575',
-                        color: 'white',
-                      }}
-                    />
-                  </Stack>
-
-                  {/* Title */}
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, lineHeight: 1.3 }}>
-                    {event.name}
-                  </Typography>
-
-                  {/* Type */}
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {event.engagementType}
-                  </Typography>
-
-                  {/* Details */}
-                  <Stack spacing={1}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <CalendarMonth fontSize="small" color="action" />
-                      <Typography variant="body2">
-                        {formatDateRange(event.startDate, event.endDate)}
-                      </Typography>
+          {paginatedEvents.map((event) => {
+            const region = getEventRegion(event);
+            const type = getEventType(event);
+            return (
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={event._id}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    {/* Status & Region */}
+                    <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+                      <Chip
+                        label={event.status || 'Unknown'}
+                        size="small"
+                        color={statusColors[event.status] || 'default'}
+                      />
+                      {region && (
+                        <Chip
+                          label={region}
+                          size="small"
+                          sx={{
+                            bgcolor: regionColors[region] || '#757575',
+                            color: 'white',
+                          }}
+                        />
+                      )}
+                      {event.isVirtual && (
+                        <Chip label="Virtual" size="small" icon={<Videocam />} variant="outlined" />
+                      )}
                     </Stack>
 
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <LocationOn fontSize="small" color="action" />
-                      <Typography variant="body2" noWrap>
-                        {event.location || 'TBD'}
-                      </Typography>
-                    </Stack>
+                    {/* Title */}
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, lineHeight: 1.3 }}>
+                      {event.name}
+                    </Typography>
 
-                    {event.account?.name && (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Business fontSize="small" color="action" />
-                        <Typography variant="body2" noWrap>
-                          {event.account.name}
-                        </Typography>
-                      </Stack>
+                    {/* Type */}
+                    {type && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {type}
+                      </Typography>
                     )}
 
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Lightbulb fontSize="small" color="action" />
-                      <Typography variant="body2">
-                        {event.insightCount || 0} insights captured
-                      </Typography>
+                    {/* Details */}
+                    <Stack spacing={1}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <CalendarMonth fontSize="small" color="action" />
+                        <Typography variant="body2">
+                          {formatDateRange(event.startDate, event.endDate)}
+                        </Typography>
+                      </Stack>
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <LocationOn fontSize="small" color="action" />
+                        <Typography variant="body2" noWrap>
+                          {event.location || 'TBD'}
+                        </Typography>
+                      </Stack>
+
+                      {event.account?.name && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Business fontSize="small" color="action" />
+                          <Typography variant="body2" noWrap>
+                            {event.account.name}
+                          </Typography>
+                        </Stack>
+                      )}
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Lightbulb fontSize="small" color="action" />
+                        <Typography variant="body2">
+                          {event.insightCount || 0} insights captured
+                        </Typography>
+                      </Stack>
                     </Stack>
-                  </Stack>
 
-                  {/* Technical Theme */}
-                  {event.technicalTheme && (
-                    <Chip
-                      label={event.technicalTheme}
+                    {/* Quarter & Technical Theme */}
+                    <Stack direction="row" spacing={0.5} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
+                      {event.quarter && (
+                        <Chip label={event.quarter} size="small" variant="outlined" />
+                      )}
+                      {event.technicalTheme && (
+                        <Chip label={event.technicalTheme} size="small" variant="outlined" />
+                      )}
+                    </Stack>
+                  </CardContent>
+
+                  <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+                    <Button
                       size="small"
-                      variant="outlined"
-                      sx={{ mt: 2 }}
-                    />
-                  )}
-                </CardContent>
-
-                <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-                  <Button
-                    size="small"
-                    startIcon={<Visibility />}
-                    onClick={() => router.push(`/events/${event._id}`)}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    size="small"
-                    startIcon={<Edit />}
-                    onClick={() => router.push(`/events/${event._id}/edit`)}
-                  >
-                    Edit
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
+                      startIcon={<Visibility />}
+                      onClick={() => router.push(`/events/${event._id}`)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Edit />}
+                      onClick={() => router.push(`/events/${event._id}/edit`)}
+                    >
+                      Edit
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            );
+          })}
         </Grid>
       )}
 
@@ -413,6 +569,7 @@ export default function EventsPage() {
                   <TableCell>Status</TableCell>
                   <TableCell>Region</TableCell>
                   <TableCell>Type</TableCell>
+                  <TableCell>Quarter</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Location</TableCell>
                   <TableCell>Insights</TableCell>
@@ -420,56 +577,86 @@ export default function EventsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredEvents.map((event) => (
-                  <TableRow key={event._id} hover>
-                    <TableCell>
-                      <Typography fontWeight={600}>{event.name}</Typography>
-                      {event.account?.name && (
-                        <Typography variant="caption" color="text.secondary">
-                          {event.account.name}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={event.status}
-                        size="small"
-                        color={statusColors[event.status] || 'default'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={event.region}
-                        size="small"
-                        sx={{
-                          bgcolor: regionColors[event.region] || '#757575',
-                          color: 'white',
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>{event.engagementType}</TableCell>
-                    <TableCell>{formatDate(event.startDate)}</TableCell>
-                    <TableCell>{event.location}</TableCell>
-                    <TableCell>
-                      <Chip label={event.insightCount || 0} size="small" variant="outlined" />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => router.push(`/events/${event._id}`)}>
-                        <Visibility fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => router.push(`/events/${event._id}/edit`)}>
-                        <Edit fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error">
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {paginatedEvents.map((event) => {
+                  const region = getEventRegion(event);
+                  const type = getEventType(event);
+                  return (
+                    <TableRow key={event._id} hover>
+                      <TableCell>
+                        <Typography fontWeight={600}>{event.name}</Typography>
+                        {event.account?.name && (
+                          <Typography variant="caption" color="text.secondary">
+                            {event.account.name}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={event.status || 'Unknown'}
+                          size="small"
+                          color={statusColors[event.status] || 'default'}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {region ? (
+                          <Chip
+                            label={region}
+                            size="small"
+                            sx={{
+                              bgcolor: regionColors[region] || '#757575',
+                              color: 'white',
+                            }}
+                          />
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">-</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{type || '-'}</Typography>
+                        {event.isVirtual && (
+                          <Chip label="Virtual" size="small" variant="outlined" sx={{ ml: 0.5, height: 20, fontSize: '0.65rem' }} />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption">{event.quarter || '-'}</Typography>
+                      </TableCell>
+                      <TableCell>{formatDate(event.startDate)}</TableCell>
+                      <TableCell>{event.location || '-'}</TableCell>
+                      <TableCell>
+                        <Chip label={event.insightCount || 0} size="small" variant="outlined" />
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={() => router.push(`/events/${event._id}`)}>
+                          <Visibility fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => router.push(`/events/${event._id}/edit`)}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error">
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {pageCount > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       )}
 
       {/* No results */}
@@ -479,15 +666,15 @@ export default function EventsPage() {
             <Typography variant="h6" color="text.secondary">
               No events match your filters
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {events.length} total events loaded. Try adjusting your search or filter criteria.
+            </Typography>
             <Button
               sx={{ mt: 2 }}
-              onClick={() => {
-                setSearchQuery('');
-                setStatusFilter('all');
-                setRegionFilter('all');
-              }}
+              startIcon={<Clear />}
+              onClick={clearAllFilters}
             >
-              Clear Filters
+              Clear All Filters
             </Button>
           </CardContent>
         </Card>

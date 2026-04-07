@@ -2,7 +2,7 @@
 
 The Builder Insights Public API allows third-party applications to record developer insights, query events, and integrate with the Builder Insights platform programmatically.
 
-**Base URL:** `https://your-deployment.vercel.app/api/v1`
+**Base URL:** `https://api.builderinsights.app/api/v1`
 
 ---
 
@@ -12,7 +12,7 @@ All API requests require an API key passed via the `X-API-Key` header.
 
 ```bash
 curl -H "X-API-Key: bi_your_api_key_here" \
-  https://your-deployment.vercel.app/api/v1/insights
+  https://api.builderinsights.app/api/v1/insights
 ```
 
 ### Obtaining an API Key
@@ -134,7 +134,7 @@ GET /api/v1/insights
 
 ```bash
 curl -H "X-API-Key: bi_your_key" \
-  "https://your-app.vercel.app/api/v1/insights?type=Feature+Request&priority=High&limit=10"
+  "https://api.builderinsights.app/api/v1/insights?type=Feature+Request&priority=High&limit=10"
 ```
 
 **Response:**
@@ -180,7 +180,7 @@ GET /api/v1/insights/:id
 
 ```bash
 curl -H "X-API-Key: bi_your_key" \
-  https://your-app.vercel.app/api/v1/insights/6651a...
+  https://api.builderinsights.app/api/v1/insights/6651a...
 ```
 
 ---
@@ -249,7 +249,7 @@ curl -X POST \
       "experience": "intermediate"
     }
   }' \
-  https://your-app.vercel.app/api/v1/insights
+  https://api.builderinsights.app/api/v1/insights
 ```
 
 **Response (201):**
@@ -296,7 +296,7 @@ curl -X PUT \
   -H "X-API-Key: bi_your_key" \
   -H "Content-Type: application/json" \
   -d '{"priority": "Critical", "tags": ["escalated"]}' \
-  https://your-app.vercel.app/api/v1/insights/6661b...
+  https://api.builderinsights.app/api/v1/insights/6661b...
 ```
 
 ---
@@ -325,7 +325,7 @@ GET /api/v1/events
 
 ```bash
 curl -H "X-API-Key: bi_your_key" \
-  "https://your-app.vercel.app/api/v1/events?search=MongoDB.local&limit=10"
+  "https://api.builderinsights.app/api/v1/events?search=MongoDB.local&limit=10"
 ```
 
 ---
@@ -404,7 +404,7 @@ Returns active advocates with limited fields (name, role, ID) for privacy.
 import requests
 
 API_KEY = "bi_your_api_key_here"
-BASE_URL = "https://your-app.vercel.app/api/v1"
+BASE_URL = "https://api.builderinsights.app/api/v1"
 HEADERS = {
     "X-API-Key": API_KEY,
     "Content-Type": "application/json",
@@ -448,7 +448,7 @@ print(f"Found {results['pagination']['total']} high-priority feature requests")
 
 ```javascript
 const API_KEY = "bi_your_api_key_here";
-const BASE_URL = "https://your-app.vercel.app/api/v1";
+const BASE_URL = "https://api.builderinsights.app/api/v1";
 
 async function createInsight(data) {
   const response = await fetch(`${BASE_URL}/insights`, {
@@ -502,7 +502,7 @@ console.log(`Created insight: ${insight._id}`);
 // For use in the companion mobile app or any React Native app
 
 const API_KEY = "bi_your_api_key_here";
-const BASE_URL = "https://your-app.vercel.app/api/v1";
+const BASE_URL = "https://api.builderinsights.app/api/v1";
 
 class BuilderInsightsClient {
   constructor(apiKey) {
@@ -607,7 +607,7 @@ await client.createInsight({
 # Batch upload insights from a CSV or JSON file
 
 API_KEY="bi_your_api_key_here"
-BASE_URL="https://your-app.vercel.app/api/v1"
+BASE_URL="https://api.builderinsights.app/api/v1"
 
 # Upload a single insight
 curl -s -X POST \
@@ -673,7 +673,7 @@ curl -X POST \
     "rateLimit": 5000,
     "description": "Used by Acme Corp internal tool to submit conference insights"
   }' \
-  https://your-app.vercel.app/api/admin/api-keys
+  https://admin.builderinsights.app/api/admin/api-keys
 ```
 
 **Response:**
